@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#@IgnoreInspection BashAddShebang
 
 # Copyright (c) YugaByte, Inc.
 #
@@ -15,16 +15,9 @@
 
 set -euo pipefail
 
-. "${0%/*}/linuxbrew-common.sh"
+if [[ $BASH_SOURCE == $0 ]]; then
+  echo "$BASH_SOURCE must be sourced, not executed" >&2
+  exit 1
+fi
 
-BREW_DIRNAME="linuxbrew-$(date +%Y%m%dT%H%M%S)"
-BREW_LINK="$(realpath .)/$BREW_DIRNAME"
-LEN=${#BREW_LINK}
-[[ $LEN -le $ABS_PATH_LIMIT ]] || (echo "Linuxbrew link absolute path should be no more than\
- $ABS_PATH_LIMIT bytes, but actual length is $LEN bytes: $BREW_LINK"; exit 1)
-
-BREW_HOME=$(echo "$BREW_LINK-$(head -c $ABS_PATH_LIMIT </dev/zero | tr '\0' x)" | \
-  cut -c-$ABS_PATH_LIMIT)
-git clone https://github.com/Linuxbrew/brew.git "$BREW_HOME"
-ln -s "$BREW_HOME" "$BREW_LINK"
-echo "Created link: $BREW_LINK -> $BREW_HOME"
+declare -i -r ABS_PATH_LIMIT=85

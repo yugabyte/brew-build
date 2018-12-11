@@ -1,13 +1,28 @@
 #!/usr/bin/env bash
+
+# Copyright (c) YugaByte, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+# in compliance with the License.  You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software distributed under the License
+# is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+# or implied.  See the License for the specific language governing permissions and limitations
+# under the License.
+#
+
 set -euo pipefail
 
-ABS_PATH_LIMIT=85
+. "${0%/*}/linuxbrew-common.sh"
+
 export HOMEBREW_NO_AUTO_UPDATE=1
 
 [[ -x ./bin/brew ]] || (echo "This script should be run inside Linuxbrew directory."; exit 1)
 
-cd $(realpath .)
-BREW_HOME="$PWD"
+cd "$(realpath .)"
+BREW_HOME=$PWD
 
 LEN=${#BREW_HOME}
 [[ $LEN -eq $ABS_PATH_LIMIT ]] || (echo "Linuxbrew absolute path should be exactly $ABS_PATH_LIMIT \
@@ -19,12 +34,13 @@ openssl_formula=./Library/Taps/homebrew/homebrew-core/Formula/openssl.rb
 openssl_orig=./Library/Taps/homebrew/homebrew-core/Formula/openssl.rb.orig
 
 if [[ ! -e "$openssl_orig" ]]; then
+  # Run brew info, so brew download openssl formula which we want to patch.
   ./bin/brew info openssl >/dev/null
   cp "$openssl_formula" "$openssl_orig"
 fi
 
 cp "$openssl_orig" "$openssl_formula"
-  cat <<EOF | patch -n $openssl_formula
+cat <<EOF | patch -n "$openssl_formula"
 4c4
 < class Openssl < Formula
 ---
@@ -51,27 +67,15 @@ if [[ ! -e VERSION_INFO ]]; then
 fi
 
 echo "Updating symlinks ..."
-cat <<EOF >update_links.sh
-#!/usr/bin/env bash
-
-set -euo pipefail
-
-BREW_HOME="\${0%/*}"
-[[ -x \$BREW_HOME/bin/brew ]] || \
-  (echo "This script should be located inside Linuxbrew directory."; exit 1)
-
-find \$BREW_HOME -type l | while read f
+find . -type l | while read f
 do
-  target="\$(readlink "\$f")"
-  real_target="\$(realpath "\$f")"
-  if [[ "\$real_target" != "\$BREW_HOME"* && "\$real_target" != "\$target" ]]; then
+  target="$(readlink "$f")"
+  real_target="$(realpath "$f")"
+  if [[ "$real_target" != "$BREW_HOME"* && "$real_target" != "$target" ]]; then
     # We want to convert relative links pointing outside of Linuxbrew to absolute links.
-    ln -sfT "\$real_target" "\$f"
+    ln -sfT "$real_target" "$f"
   fi
 done
-EOF
-chmod +x update_links.sh
-./update_links.sh
 
 echo "Preparing list of files to be patched during installation ..."
 find ./Cellar -type f | while read f
@@ -79,14 +83,14 @@ do
   if grep -q "$BREW_HOME" "$f"; then
     echo "$f"
   fi
-done >FILES_TO_PATCH
+done | sort >FILES_TO_PATCH
 
 find . -type l | while read f
 do
   if [[ "$(readlink "$f")" == "$BREW_HOME"* ]]; then
     echo "$f"
   fi
-done >LINKS_TO_PATCH
+done | sort >LINKS_TO_PATCH
 
 cat <<EOF >post_install.sh
 #!/usr/bin/env bash
