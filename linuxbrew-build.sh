@@ -34,7 +34,7 @@ openssl_formula=./Library/Taps/homebrew/homebrew-core/Formula/openssl.rb
 openssl_orig=./Library/Taps/homebrew/homebrew-core/Formula/openssl.rb.orig
 
 if [[ ! -e "$openssl_orig" ]]; then
-  # Run brew info, so brew download openssl formula which we want to patch.
+  # Run brew info, so that brew downloads the openssl formula which we want to patch.
   ./bin/brew info openssl >/dev/null
   cp "$openssl_formula" "$openssl_orig"
 fi
@@ -58,7 +58,7 @@ readline s3cmd
 if [[ ! -e VERSION_INFO ]]; then
   commit_id=$(git rev-parse HEAD)
   echo "Linuxbrew commit ID: $commit_id" >VERSION_INFO.tmp
-  pushd $(pwd)
+  pushd "$PWD"
   cd Library/Taps/homebrew/homebrew-core
   commit_id=$(git rev-parse HEAD)
   popd
@@ -69,10 +69,11 @@ fi
 echo "Updating symlinks ..."
 find . -type l | while read f
 do
-  target="$(readlink "$f")"
-  real_target="$(realpath "$f")"
-  if [[ "$real_target" != "$BREW_HOME"* && "$real_target" != "$target" ]]; then
+  target=$(readlink "$f")
+  real_target=$(realpath "$f")
+  if [[ $real_target != $BREW_HOME* && $real_target != $target ]]; then
     # We want to convert relative links pointing outside of Linuxbrew to absolute links.
+    # -f to allow relinking. -T to avoid linking inside directory if $f already exists as directory.
     ln -sfT "$real_target" "$f"
   fi
 done
@@ -87,53 +88,20 @@ done | sort >FILES_TO_PATCH
 
 find . -type l | while read f
 do
-  if [[ "$(readlink "$f")" == "$BREW_HOME"* ]]; then
+  if [[ $(readlink "$f") == $BREW_HOME* ]]; then
     echo "$f"
   fi
 done | sort >LINKS_TO_PATCH
 
-cat <<EOF >post_install.sh
-#!/usr/bin/env bash
+BREW_HOME_ESCAPED=$(sed 's/[&/\]/\\&/g' <<<"$BREW_HOME")
 
-set -euo pipefail
-
-BREW_HOME="\${0%/*}"
-[[ -x \$BREW_HOME/bin/brew ]] || \
-  (echo "This script should be located inside Linuxbrew directory."; exit 1)
-
-ORIG_BREW_HOME="$BREW_HOME"
-ORIG_LEN=\${#ORIG_BREW_HOME}
-
-BREW_HOME="\$PWD"
-LEN=\${#BREW_HOME}
-[[ \$LEN -le \$ORIG_LEN ]] || (echo "Linuxbrew absolute path should be no more than \$ORIG_LEN \
-bytes, but actual length is \$LEN bytes: \$BREW_HOME"; exit 1)
-
-BREW_LINK="\$(echo "\$BREW_HOME-\$(head -c \$ORIG_LEN </dev/zero | tr '\0' x)" | \
-  cut -c-\$ORIG_LEN)"
-LINK_LEN=\${#BREW_LINK}
-[[ \$LINK_LEN == \$ORIG_LEN ]] || (echo "Linuxbrew should be linked to a directory having absolute path \
-length of \$ORIG_LEN bytes, but actual length is \$LINK_LEN bytes: \$BREW_LINK"; exit 1)
-
-ln -sfT "\$BREW_HOME" "\$BREW_LINK"
-
-cat FILES_TO_PATCH | while read f
-do
-  sed -i --binary "s%\$ORIG_BREW_HOME%\$BREW_LINK%g" "\$f"
-done
-
-cat LINKS_TO_PATCH | while read f
-do
-  target="\$(readlink "\$f")"
-  target="\${target/\$ORIG_BREW_HOME/\$BREW_LINK}"
-  ln -sfT "\$target" "\$f"
-done
-EOF
+sed "s/_ORIG_BREW_HOME_/$BREW_HOME_ESCAPED/g" "${0%/*}/post_install.template" >post_install.sh
 chmod +x post_install.sh
 
 brew_home_dir=${BREW_HOME##*/}
-distr_name="${brew_home_dir%-*}"
-distr_path="$(realpath ../$distr_name.tar.gz)"
+distr_name=${brew_home_dir%-*}
+distr_path=$(realpath "../$distr_name.tar.gz")
 echo "Preparing Linuxbrew distribution archive: $distr_path ..."
-tar zcf "$distr_path" . --transform s#^./#$distr_name/# --exclude ".git"
+distr_name_escaped=$(sed 's/[&/\]/\\&/g' <<<"$distr_name")
+tar zcf "$distr_path" . --transform s#^./#$distr_name_escaped/# --exclude ".git"
 echo "Done"

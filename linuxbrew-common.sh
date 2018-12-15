@@ -21,3 +21,18 @@ if [[ $BASH_SOURCE == $0 ]]; then
 fi
 
 declare -i -r ABS_PATH_LIMIT=85
+
+get_brew_link() {
+  local brew_dirname="linuxbrew-$(date +%Y%m%dT%H%M%S)"
+  local brew_link="$(realpath .)/$brew_dirname"
+  local len=${#brew_link}
+  [[ $len -le $ABS_PATH_LIMIT ]] || (echo "Linuxbrew link absolute path should be no more than\
+ $ABS_PATH_LIMIT bytes, but actual length is $len bytes: $brew_link"; exit 1)
+  echo $brew_link
+}
+
+get_brew_fixed_length_home_path() {
+  local brew_link="$1"
+  echo "$brew_link-$(head -c $ABS_PATH_LIMIT </dev/zero | tr '\0' x)" | \
+    cut -c-$ABS_PATH_LIMIT
+}
