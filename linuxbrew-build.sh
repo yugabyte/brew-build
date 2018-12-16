@@ -15,7 +15,8 @@
 
 set -euo pipefail
 
-. "${0%/*}/linuxbrew-common.sh"
+COMMON_SH="${0%/*}/linuxbrew-common.sh"
+. "$COMMON_SH"
 
 export HOMEBREW_NO_AUTO_UPDATE=1
 
@@ -53,12 +54,12 @@ cat <<EOF | patch -n "$openssl_formula"
 EOF
 
 ./bin/brew install autoconf automake bzip2 flex gcc icu4c libtool libuuid maven ninja openssl \
-readline s3cmd
+  readline s3cmd
 
 if [[ ! -e VERSION_INFO ]]; then
   commit_id=$(git rev-parse HEAD)
   echo "Linuxbrew commit ID: $commit_id" >VERSION_INFO.tmp
-  pushd "$PWD"
+  pushd
   cd Library/Taps/homebrew/homebrew-core
   commit_id=$(git rev-parse HEAD)
   popd
@@ -93,15 +94,16 @@ do
   fi
 done | sort >LINKS_TO_PATCH
 
-BREW_HOME_ESCAPED=$(sed 's/[&/\]/\\&/g' <<<"$BREW_HOME")
+BREW_HOME_ESCAPED=$(get_escaped_sed_replacement_str "$BREW_HOME")
 
-sed "s/_ORIG_BREW_HOME_/$BREW_HOME_ESCAPED/g" "${0%/*}/post_install.template" >post_install.sh
+cp $COMMON_SH .
+sed "s/{{ orig_brew_home }}/$BREW_HOME_ESCAPED/g" "${0%/*}/post_install.template" >post_install.sh
 chmod +x post_install.sh
 
 brew_home_dir=${BREW_HOME##*/}
 distr_name=${brew_home_dir%-*}
 distr_path=$(realpath "../$distr_name.tar.gz")
 echo "Preparing Linuxbrew distribution archive: $distr_path ..."
-distr_name_escaped=$(sed 's/[&/\]/\\&/g' <<<"$distr_name")
-tar zcf "$distr_path" . --transform s#^./#$distr_name_escaped/# --exclude ".git"
+distr_name_escaped=$(get_escaped_sed_replacement_str "$distr_name" "%")
+tar zcf "$distr_path" . --transform s%^./%$distr_name_escaped/% --exclude ".git"
 echo "Done"

@@ -17,7 +17,7 @@ set -euo pipefail
 
 . "${0%/*}/linuxbrew-common.sh"
 
-show_help() {
+show_help_and_exit() {
   cat >&2 <<-EOT
 linuxbrew-copy.sh creates a copy of linuxbrew installation in current directory and updates \
 it with new linuxbrew home path.
@@ -27,24 +27,30 @@ EOT
 }
 
 if [[ $# -lt 1 ]]; then
-  show_help
+  show_help_and_exit
 fi
 
 SRC_BREW_HOME=$(realpath $1)
-[[ -x $SRC_BREW_HOME/bin/brew ]] || \
-  (echo "<source linux brew home path> should point to Linuxbrew directory."; show_help)
+if [[ ! -x $SRC_BREW_HOME/bin/brew ]]; then
+  echo "<source linux brew home path> should point to Linuxbrew directory." >&2
+  show_help_and_exit
+fi
 
 BREW_LINK=$(get_brew_link)
-BREW_HOME=$(get_brew_fixed_length_home_path "$BREW_LINK")
+BREW_HOME=$(get_fixed_length_path "$BREW_LINK")
 
 echo "Copying to $BREW_HOME ..."
 mkdir -p "$BREW_HOME"
+# Recursively copy files tree, copy symlinks as symlinks, preserve hard links.
 rsync -rlH "$SRC_BREW_HOME/" "$BREW_HOME/"
 
 echo "Patching files ..."
+SRC_BREW_HOME_ESCAPED=$(get_escaped_sed_re "$SRC_BREW_HOME")
+BREW_HOME_ESCAPED=$(get_escaped_sed_replacement_str "$BREW_HOME")
+
 find "$BREW_HOME" -type f | while read f
 do
-  sed -i --binary "s%$SRC_BREW_HOME%$BREW_HOME%g" "$f"
+  sed -i --binary "s/$SRC_BREW_HOME_ESCAPED/$BREW_HOME_ESCAPED/g" "$f"
 done
 
 echo "Updating symlinks ..."

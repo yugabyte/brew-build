@@ -1,29 +1,53 @@
 #!/usr/bin/env bash
 
+# Copyright (c) YugaByte, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+# in compliance with the License.  You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software distributed under the License
+# is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+# or implied.  See the License for the specific language governing permissions and limitations
+# under the License.
+#
+# This script replaces patches files and links in Linuxbrew installation. It replaces path
+# where Linuxbrew was originally built with new path of the same length. In order to keep the path
+# length the same we are creating symlink of required length to current Linuxbrew dir.
+
 set -euo pipefail
+
+. "${0%/*}/linuxbrew-common.sh"
 
 BREW_HOME="${0%/*}"
 [[ -x $BREW_HOME/bin/brew ]] || \
   (echo "This script should be located inside Linuxbrew directory."; exit 1)
 
-ORIG_BREW_HOME="_ORIG_BREW_HOME_"
+# {{ orig_brew_home }} is being replaced with original Linuxbrew home path.
+ORIG_BREW_HOME="{{ orig_brew_home }}"
 ORIG_LEN=${#ORIG_BREW_HOME}
 
 BREW_HOME="$PWD"
 LEN=${#BREW_HOME}
-[[ $LEN -le $ORIG_LEN ]] || (echo "Linuxbrew absolute path should be no more than $ORIG_LEN \
-bytes, but actual length is $LEN bytes: $BREW_HOME"; exit 1)
+if [[ $LEN -gt $ORIG_LEN ]]; then
+  echo "Linuxbrew absolute path should be no more than $ORIG_LEN bytes, but actual length is" \
+       "$LEN bytes: $BREW_HOME" >&2
+  exit 1
+fi
 
-BREW_LINK="$(echo "$BREW_HOME-$(head -c $ORIG_LEN </dev/zero | tr '\0' x)" | \
-  cut -c-$ORIG_LEN)"
+BREW_LINK=$(get_fixed_length_path "$BREW_HOME" "$ORIG_LEN")
 LINK_LEN=${#BREW_LINK}
-[[ $LINK_LEN == $ORIG_LEN ]] || (echo "Linuxbrew should be linked to a directory having absolute path \
-length of $ORIG_LEN bytes, but actual length is $LINK_LEN bytes: $BREW_LINK"; exit 1)
+if [[ $LINK_LEN != $ORIG_LEN ]]; then
+  echo "Linuxbrew should be linked to a directory having absolute path length of $ORIG_LEN" \
+       "bytes, but actual length is $LINK_LEN bytes: $BREW_LINK" >&2
+  exit 1
+fi
 
 ln -sfT "$BREW_HOME" "$BREW_LINK"
 
-ORIG_BREW_HOME_ESCAPED=$(sed 's/[^^]/[&]/g; s/\^/\\^/g' <<<"$ORIG_BREW_HOME")
-BREW_LINK_ESCAPED=$(sed 's/[&/\]/\\&/g' <<<"$BREW_LINK")
+ORIG_BREW_HOME_ESCAPED=$(get_escaped_sed_re "$ORIG_BREW_HOME")
+BREW_LINK_ESCAPED=$(get_escaped_sed_replacement_str "$BREW_LINK")
 
 cat FILES_TO_PATCH | while read f
 do
