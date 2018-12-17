@@ -34,6 +34,10 @@ get_brew_link() {
   echo "$brew_link"
 }
 
+# Prepend 'x' symbols to source path up to specified length.
+# Parameters:
+#   path - source path.
+#   len - required output path length. Optional parameter, if absent uses $ABS_PATH_LIMIT.
 get_fixed_length_path() {
   local path="$1"
   local len="${2:-$ABS_PATH_LIMIT}"
@@ -42,11 +46,23 @@ get_fixed_length_path() {
   echo "$path-$(head -c $len </dev/zero | tr '\0' x)" | cut -c-$len
 }
 
+# Escape special characters in source string, so it can be used with sed as simple string pattern.
+# https://stackoverflow.com/a/28783790/461529
+# https://stackoverflow.com/a/29613573/461529
 get_escaped_sed_re() {
+  # Every character except ^ is placed in its own character set [...] expression to treat it as a
+  # literal. Then, ^ characters are escaped as \^.
   sed 's/[^^]/[&]/g; s/\^/\\^/g' <<<$1
 }
 
+# Escape special characters in source string, so it can be used with sed as a replacement string.
+# https://stackoverflow.com/a/28783790/461529
+# https://stackoverflow.com/a/29613573/461529
 get_escaped_sed_replacement_str() {
-  local delim="${2:-/}"
+  # The replacement string in a sed s/// command is not a regex, but it recognizes placeholders
+  # that refer to either the entire string matched by the regex (&) or specific capture-group
+  # results by index (\1, \2, ...), so these must be escaped, along with the (customary) regex
+  # delimiter, /.
+  local delim=${2:-/}
   sed "s/[$delim&\]/\\\\&/g" <<<$1
 }

@@ -59,7 +59,7 @@ EOF
 if [[ ! -e VERSION_INFO ]]; then
   commit_id=$(git rev-parse HEAD)
   echo "Linuxbrew commit ID: $commit_id" >VERSION_INFO.tmp
-  pushd
+  pushd "$PWD"
   cd Library/Taps/homebrew/homebrew-core
   commit_id=$(git rev-parse HEAD)
   popd
