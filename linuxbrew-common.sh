@@ -51,7 +51,8 @@ get_fixed_length_path() {
 # https://stackoverflow.com/a/29613573/461529
 get_escaped_sed_re() {
   # Every character except ^ is placed in its own character set [...] expression to treat it as a
-  # literal. Then, ^ characters are escaped as \^.
+  # literal. Then, ^ characters are escaped as \^. Note, that []] also works, i.e. matches ]
+  # correctly.
   sed 's/[^^]/[&]/g; s/\^/\\^/g' <<<$1
 }
 
