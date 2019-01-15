@@ -59,8 +59,7 @@ EOF
 if [[ ! -e VERSION_INFO ]]; then
   commit_id=$(git rev-parse HEAD)
   echo "Linuxbrew commit ID: $commit_id" >VERSION_INFO.tmp
-  pushd "$PWD"
-  cd Library/Taps/homebrew/homebrew-core
+  pushd Library/Taps/homebrew/homebrew-core
   commit_id=$(git rev-parse HEAD)
   popd
   echo "homebrew-core commit ID: $commit_id" >>VERSION_INFO.tmp
@@ -102,8 +101,12 @@ chmod +x post_install.sh
 
 brew_home_dir=${BREW_HOME##*/}
 distr_name=${brew_home_dir%-*}
-distr_path=$(realpath "../$distr_name.tar.gz")
+archive_name=$distr_name.tar.gz
+distr_path=$(realpath "../$archive_name")
 echo "Preparing Linuxbrew distribution archive: $distr_path ..."
 distr_name_escaped=$(get_escaped_sed_replacement_str "$distr_name" "%")
 tar zcf "$distr_path" . --transform s%^./%$distr_name_escaped/% --exclude ".git"
+pushd ..
+sha256sum $archive_name >$archive_name.sha256
+popd
 echo "Done"
