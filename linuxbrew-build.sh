@@ -54,7 +54,7 @@ cat <<EOF | patch -n "$openssl_formula"
 EOF
 
 ./bin/brew install autoconf automake bzip2 flex gcc icu4c libtool libuuid maven ninja openssl \
-  readline s3cmd
+  readline s3cmd libuv
 
 if [[ ! -e VERSION_INFO ]]; then
   commit_id=$(git rev-parse HEAD)
