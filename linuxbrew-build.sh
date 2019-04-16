@@ -49,13 +49,15 @@ else
   export HOMEBREW_ARCH="ivybridge"
 fi
 
+extra_flags="-mno-avx -mno-bmi -mno-bmi2 -mno-fma -no-abm -no-movbe"
+
 cp "$openssl_orig" "$openssl_formula"
 cat <<EOF | patch "$openssl_formula"
 @@ -61,6 +61,7 @@ class Openssl < Formula
        end
        args << "enable-md2"
      end
-+    args << %w[-march=$HOMEBREW_ARCH -mno-avx -mno-bmi -mno-bmi2 -mno-fma -no-abm -no-movbe $sse4_args]
++    args += %w[-march=$HOMEBREW_ARCH $extra_flags $sse4_args]
      system "perl", "./Configure", *args
      system "make", "depend"
      system "make"
