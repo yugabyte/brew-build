@@ -29,8 +29,6 @@ LEN=${#BREW_HOME}
 [[ $LEN -eq $ABS_PATH_LIMIT ]] || (echo "Linuxbrew absolute path should be exactly $ABS_PATH_LIMIT \
  bytes, but actual length is $LEN bytes: $BREW_HOME"; exit 1)
 
-export HOMEBREW_ARCH=ivybridge
-
 openssl_formula=./Library/Taps/homebrew/homebrew-core/Formula/openssl.rb
 openssl_orig=./Library/Taps/homebrew/homebrew-core/Formula/openssl.rb.orig
 
@@ -40,18 +38,29 @@ if [[ ! -e "$openssl_orig" ]]; then
   cp "$openssl_formula" "$openssl_orig"
 fi
 
+YB_USE_SSE4=${YB_USE_SSE4:-1}
+if [[ $YB_USE_SSE4 == "0" ]]; then
+  echo "YB_USE_SSE4=$YB_USE_SSE4, disabling use of SSE4"
+  sse4_args="-mno-sse4.1 -mno-sse4.2"
+  export HOMEBREW_ARCH="core2"
+else
+  echo "YB_USE_SSE4=$YB_USE_SSE4, enabling use of SSE4"
+  sse4_args=""
+  export HOMEBREW_ARCH="ivybridge"
+fi
+
 cp "$openssl_orig" "$openssl_formula"
-cat <<EOF | patch -n "$openssl_formula"
-4c4
-< class Openssl < Formula
----
-> class Openssl < Formula
-40c40,41
-<       :x86_64 => %w[linux-x86_64],
----
->       :x86_64 => %w[linux-x86_64
->                     -march=ivybridge -mno-avx -mno-bmi -mno-bmi2 -mno-fma -no-abm -no-movbe],
+cat <<EOF | patch "$openssl_formula"
+@@ -61,6 +61,7 @@ class Openssl < Formula
+       end
+       args << "enable-md2"
+     end
++    args << %w[-march=$HOMEBREW_ARCH -mno-avx -mno-bmi -mno-bmi2 -mno-fma -no-abm -no-movbe $sse4_args]
+     system "perl", "./Configure", *args
+     system "make", "depend"
+     system "make"
 EOF
+unset sse4_args
 
 ./bin/brew install autoconf automake bzip2 flex gcc icu4c libtool libuuid maven ninja openssl \
   readline s3cmd libuv
