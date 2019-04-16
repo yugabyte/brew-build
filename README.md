@@ -12,15 +12,15 @@ This allows glibc and other libraries to properly locate files such as locales t
 Suppose these scripts are checked out to `~/code/linuxbrew-build` and we also have a scratch space
 directory `/share/linuxbrew` where we will do our build.
 
-``bash
+```bash
 cd /share/linuxbrew
 ~/code/linuxbrew-build/linuxbrew-clone.sh
 ```
 
 This will produce a directory named like `linuxbrew-20190415T234057`. 
-Now let's build Linuxbrew packages there:
+Next, build and install the right set of Linuxbrew packages there:
 
-```
+```basn
 cd "$( ls -td linuxbrew-* | head -1 )"
 ~/code/linuxbrew-build/linuxbrew-build.sh
 ```
