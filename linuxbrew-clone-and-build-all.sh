@@ -16,6 +16,10 @@
 set -euo pipefail
 
 . "${0%/*}/linuxbrew-common.sh"
+
+export HOMEBREW_CACHE=$PWD/linuxbrew_cache
+export HOMEBREW_LOGS=$PWD/linuxbrew_logs
+
 "$YB_LINUXBREW_BUILD_ROOT"/linuxbrew-clone.sh
 
 BREW_HOME=$( cat "latest_brew_home.txt" )
@@ -29,23 +33,26 @@ BREW_HOME_NOSSE4=$( get_fixed_length_path "$BREW_LINK_NOSSE4" )
   ln -s "$BREW_HOME_NOSSE4" "$BREW_LINK_NOSSE4"
 )
 
-logs_dir=$HOME/logs
+logs_dir=$PWD/logs
 mkdir -p "$logs_dir"
 log_path=$logs_dir/$BREW_HOME_BASENAME.log
 echo "Writing log to $log_path"
 (
-  for YB_USE_SSE4 in 1 0; do
-    if [[ $YB_USE_SSE4 == "1" ]]; then
-      current_brew_home=$BREW_HOME
-    else
-      current_brew_home=$BREW_HOME_NOSSE4
-    fi
-    (
-      set -x
-      cd "$current_brew_home"
-      "$YB_LINUXBREW_BUILD_ROOT"/linuxbrew-build.sh
-    )
-  done
+  time (
+    for YB_USE_SSE4 in 1 0; do
+      export YB_USE_SSE4
+      if [[ $YB_USE_SSE4 == "1" ]]; then
+        current_brew_home=$BREW_HOME
+      else
+        current_brew_home=$BREW_HOME_NOSSE4
+      fi
+      (
+        set -x
+        cd "$current_brew_home"
+        time "$YB_LINUXBREW_BUILD_ROOT"/linuxbrew-build.sh
+      )
+    done
+  )
 ) 2>&1 | tee "$log_path"
 
 echo "Log available at $log_path"

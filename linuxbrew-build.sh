@@ -22,6 +22,8 @@ export HOMEBREW_NO_AUTO_UPDATE=1
 
 [[ -x ./bin/brew ]] || (echo "This script should be run inside Linuxbrew directory."; exit 1)
 
+YB_USE_SSE4=${YB_USE_SSE4:-1}
+
 echo
 echo "============================================================================================"
 echo "Building Linuxbrew in $PWD"
@@ -45,7 +47,6 @@ if [[ ! -e "$openssl_orig" ]]; then
   cp "$openssl_formula" "$openssl_orig"
 fi
 
-YB_USE_SSE4=${YB_USE_SSE4:-1}
 install_args=""
 sse4_flags=""
 if [[ $YB_USE_SSE4 == "0" ]]; then
@@ -73,7 +74,7 @@ cat <<EOF | patch "$openssl_formula"
 EOF
 unset sse4_args
 
-LINUXBREW_PACKAGES=(
+readonly LINUXBREW_PACKAGES=(
   autoconf
   automake
   bzip2
@@ -89,7 +90,24 @@ LINUXBREW_PACKAGES=(
   s3cmd
 )
 
-( set -x; ./bin/brew install $install_args "${LINUXBREW_PACKAGES[@]}" )
+successful_packages=()
+failed_packages=()
+
+for package in "${LINUXBREW_PACKAGES[@]}"; do
+  if ( set -x; ./bin/brew install $install_args "$package" ); then
+    successful_packages+=( "$package" )
+  else
+    echo >&2 "Failed to install package: $package"
+    failed_packages+=( "$package" )
+  fi
+done
+
+echo "Successfully installed packages: ${successful_packages[*]}"
+
+if [[ ${#failed_packages[@]} -gt 0 ]]; then
+  echo >&2 "Failed to install packages: ${failed_packages[*]}"
+  exit 1
+fi
 
 if [[ ! -e VERSION_INFO ]]; then
   commit_id=$(git rev-parse HEAD)
@@ -105,11 +123,16 @@ echo "Updating symlinks ..."
 find . -type l | while read f
 do
   target=$(readlink "$f")
-  real_target=$(realpath "$f")
-  if [[ $real_target != $BREW_HOME* && $real_target != $target ]]; then
-    # We want to convert relative links pointing outside of Linuxbrew to absolute links.
-    # -f to allow relinking. -T to avoid linking inside directory if $f already exists as directory.
-    ln -sfT "$real_target" "$f"
+  if [[ -e $f ]]; then
+    real_target=$(realpath "$f")
+    if [[ $real_target != $BREW_HOME* && $real_target != $target ]]; then
+      # We want to convert relative links pointing outside of Linuxbrew to absolute links.
+      # -f to allow relinking. -T to avoid linking inside directory if $f already exists as
+      # directory.
+      ln -sfT "$real_target" "$f"
+    fi
+  else
+    echo >&2 "Link $f seems broken"
   fi
 done
 
@@ -123,7 +146,7 @@ done | sort >FILES_TO_PATCH
 
 find . -type l | while read f
 do
-  if [[ $(readlink "$f") == $BREW_HOME* ]]; then
+  if [[ -e "$f" && $(readlink "$f") == $BREW_HOME* ]]; then
     echo "$f"
   fi
 done | sort >LINKS_TO_PATCH
