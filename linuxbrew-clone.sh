@@ -13,6 +13,10 @@
 # under the License.
 #
 
+# This script creates a new Linuxbrew directory by cloning the upstream GitHub repository. The
+# directory path is chosen to be of a fixed length, and a more human-readable symlink is created
+# to point to the resulting directory.
+
 set -euo pipefail
 
 . "${0%/*}/linuxbrew-common.sh"
@@ -22,3 +26,6 @@ BREW_HOME=$(get_fixed_length_path "$BREW_LINK")
 git clone https://github.com/Linuxbrew/brew.git "$BREW_HOME"
 ln -s "$BREW_HOME" "$BREW_LINK"
 echo "Created link: $BREW_LINK -> $BREW_HOME"
+
+echo "$BREW_HOME" >latest_brew_home.txt
+echo "$BREW_LINK" >latest_brew_link.txt

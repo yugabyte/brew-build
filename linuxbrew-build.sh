@@ -22,6 +22,13 @@ export HOMEBREW_NO_AUTO_UPDATE=1
 
 [[ -x ./bin/brew ]] || (echo "This script should be run inside Linuxbrew directory."; exit 1)
 
+echo
+echo "============================================================================================"
+echo "Building Linuxbrew in $PWD"
+echo "YB_USE_SSE4=$YB_USE_SSE4"
+echo "============================================================================================"
+echo
+
 cd "$(realpath .)"
 BREW_HOME=$PWD
 
@@ -39,13 +46,15 @@ if [[ ! -e "$openssl_orig" ]]; then
 fi
 
 YB_USE_SSE4=${YB_USE_SSE4:-1}
+install_args=""
+sse4_flags=""
 if [[ $YB_USE_SSE4 == "0" ]]; then
   echo "YB_USE_SSE4=$YB_USE_SSE4, disabling use of SSE4"
-  sse4_args="-mno-sse4.1 -mno-sse4.2"
+  sse4_flags="-mno-sse4.1 -mno-sse4.2"
+  install_args="--build-from-source"
   export HOMEBREW_ARCH="core2"
 else
   echo "YB_USE_SSE4=$YB_USE_SSE4, enabling use of SSE4"
-  sse4_args=""
   export HOMEBREW_ARCH="ivybridge"
 fi
 
@@ -57,15 +66,30 @@ cat <<EOF | patch "$openssl_formula"
        end
        args << "enable-md2"
      end
-+    args += %w[-march=$HOMEBREW_ARCH $extra_flags $sse4_args]
++    args += %w[-march=$HOMEBREW_ARCH $extra_flags $sse4_flags]
      system "perl", "./Configure", *args
      system "make", "depend"
      system "make"
 EOF
 unset sse4_args
 
-./bin/brew install autoconf automake bzip2 flex gcc icu4c libtool libuuid maven ninja openssl \
-  readline s3cmd libuv
+LINUXBREW_PACKAGES=(
+  autoconf
+  automake
+  bzip2
+  flex
+  gcc
+  icu4c
+  libtool
+  libuuid
+  maven
+  ninja
+  openssl
+  readline
+  s3cmd
+)
+
+( set -x; ./bin/brew install $install_args "${LINUXBREW_PACKAGES[@]}" )
 
 if [[ ! -e VERSION_INFO ]]; then
   commit_id=$(git rev-parse HEAD)
