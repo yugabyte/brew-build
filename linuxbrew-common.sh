@@ -43,8 +43,7 @@ readonly YB_LINUXBREW_BUILD_ROOT=$( cd "${BASH_SOURCE%/*}" && pwd )
 get_fixed_length_path() {
   local path="$1"
   local len="${2:-$ABS_PATH_LIMIT}"
-  # Take $len number of '\0' from /dev/zero, replace '\0' with 'x', then prepend to
-  # "$brew_link-" and keep first $len symbols, so we have a path of a fixed length.
+  # Generate a path of a fixed length (up to a certain maximum length).
   local p="abcdefghijklmnopqrstuvwxyz0123456789"
   echo "$path-$(echo "$p$p$p$p$p" )" | cut -c-$len
 }
