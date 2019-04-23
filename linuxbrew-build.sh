@@ -22,14 +22,21 @@ export HOMEBREW_NO_AUTO_UPDATE=1
 
 [[ -x ./bin/brew ]] || (echo "This script should be run inside Linuxbrew directory."; exit 1)
 
+YB_USE_SSE4=${YB_USE_SSE4:-1}
+
+echo
+echo "============================================================================================"
+echo "Building Linuxbrew in $PWD"
+echo "YB_USE_SSE4=$YB_USE_SSE4"
+echo "============================================================================================"
+echo
+
 cd "$(realpath .)"
 BREW_HOME=$PWD
 
 LEN=${#BREW_HOME}
 [[ $LEN -eq $ABS_PATH_LIMIT ]] || (echo "Linuxbrew absolute path should be exactly $ABS_PATH_LIMIT \
  bytes, but actual length is $LEN bytes: $BREW_HOME"; exit 1)
-
-export HOMEBREW_ARCH=ivybridge
 
 openssl_formula=./Library/Taps/homebrew/homebrew-core/Formula/openssl.rb
 openssl_orig=./Library/Taps/homebrew/homebrew-core/Formula/openssl.rb.orig
@@ -40,21 +47,67 @@ if [[ ! -e "$openssl_orig" ]]; then
   cp "$openssl_formula" "$openssl_orig"
 fi
 
-cp "$openssl_orig" "$openssl_formula"
-cat <<EOF | patch -n "$openssl_formula"
-4c4
-< class Openssl < Formula
----
-> class Openssl < Formula
-40c40,41
-<       :x86_64 => %w[linux-x86_64],
----
->       :x86_64 => %w[linux-x86_64
->                     -march=ivybridge -mno-avx -mno-bmi -mno-bmi2 -mno-fma -no-abm -no-movbe],
-EOF
+install_args=""
+sse4_flags=""
+if [[ $YB_USE_SSE4 == "0" ]]; then
+  echo "YB_USE_SSE4=$YB_USE_SSE4, disabling use of SSE4"
+  sse4_flags="-mno-sse4.1 -mno-sse4.2"
+  install_args="--build-from-source"
+  export HOMEBREW_ARCH="core2"
+else
+  echo "YB_USE_SSE4=$YB_USE_SSE4, enabling use of SSE4"
+  export HOMEBREW_ARCH="ivybridge"
+fi
 
-./bin/brew install autoconf automake bzip2 flex gcc icu4c libtool libuuid maven ninja openssl \
-  readline s3cmd libuv
+extra_flags="-mno-avx -mno-bmi -mno-bmi2 -mno-fma -no-abm -no-movbe"
+
+cp "$openssl_orig" "$openssl_formula"
+cat <<EOF | patch "$openssl_formula"
+@@ -61,6 +61,7 @@ class Openssl < Formula
+       end
+       args << "enable-md2"
+     end
++    args += %w[-march=$HOMEBREW_ARCH $extra_flags $sse4_flags]
+     system "perl", "./Configure", *args
+     system "make", "depend"
+     system "make"
+EOF
+unset sse4_args
+
+readonly LINUXBREW_PACKAGES=(
+  autoconf
+  automake
+  bzip2
+  flex
+  gcc
+  icu4c
+  libtool
+  libuuid
+  maven
+  ninja
+  openssl
+  readline
+  s3cmd
+)
+
+successful_packages=()
+failed_packages=()
+
+for package in "${LINUXBREW_PACKAGES[@]}"; do
+  if ( set -x; ./bin/brew install $install_args "$package" ); then
+    successful_packages+=( "$package" )
+  else
+    echo >&2 "Failed to install package: $package"
+    failed_packages+=( "$package" )
+  fi
+done
+
+echo "Successfully installed packages: ${successful_packages[*]}"
+
+if [[ ${#failed_packages[@]} -gt 0 ]]; then
+  echo >&2 "Failed to install packages: ${failed_packages[*]}"
+  exit 1
+fi
 
 if [[ ! -e VERSION_INFO ]]; then
   commit_id=$(git rev-parse HEAD)
@@ -70,11 +123,16 @@ echo "Updating symlinks ..."
 find . -type l | while read f
 do
   target=$(readlink "$f")
-  real_target=$(realpath "$f")
-  if [[ $real_target != $BREW_HOME* && $real_target != $target ]]; then
-    # We want to convert relative links pointing outside of Linuxbrew to absolute links.
-    # -f to allow relinking. -T to avoid linking inside directory if $f already exists as directory.
-    ln -sfT "$real_target" "$f"
+  if [[ -e $f ]]; then
+    real_target=$(realpath "$f")
+    if [[ $real_target != $BREW_HOME* && $real_target != $target ]]; then
+      # We want to convert relative links pointing outside of Linuxbrew to absolute links.
+      # -f to allow relinking. -T to avoid linking inside directory if $f already exists as
+      # directory.
+      ln -sfT "$real_target" "$f"
+    fi
+  else
+    echo >&2 "Link $f seems broken"
   fi
 done
 
@@ -88,7 +146,7 @@ done | sort >FILES_TO_PATCH
 
 find . -type l | while read f
 do
-  if [[ $(readlink "$f") == $BREW_HOME* ]]; then
+  if [[ -e "$f" && $(readlink "$f") == $BREW_HOME* ]]; then
     echo "$f"
   fi
 done | sort >LINKS_TO_PATCH
