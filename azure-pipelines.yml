@@ -8,11 +8,11 @@ pool:
 steps:
 - script: |
     sudo apt-get install -y build-essential
+  displayName: 'Install dependencies'
 
 - script: |
     repo_dir=$PWD
     mkdir ~/linuxbrew_versions
     cd ~/linuxbrew_versions
     "$repo_dir/linuxbrew-clone-and-build-all.sh"
-
-displayName: 'Test installing/building Linuxbrew'
+  displayName: 'Build Linuxbrew'
