@@ -16,3 +16,5 @@ steps:
     cd ~/linuxbrew_versions
     "$repo_dir/linuxbrew-clone-and-build-all.sh"
   displayName: 'Build Linuxbrew'
+
+timeoutInMinutes: 0
