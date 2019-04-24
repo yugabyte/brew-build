@@ -9,18 +9,13 @@ This allows glibc and other libraries to properly locate files such as locales t
 
 ## Using the scripts
 
-Suppose these scripts are checked out to `~/code/linuxbrew-build` and we also have a scratch space
-directory `/share/linuxbrew` where we will do our build.
+```
+mkdir -p ~/code
+cd ~/code
+git clone https://github.com/yugabyte/linuxbrew-build.git
 
-```bash
-cd /share/linuxbrew
-~/code/linuxbrew-build/linuxbrew-clone.sh
+mkdir -p ~/linuxbrew_versions
+~/code/linuxbrew-build/linuxbrew-clone-and-build-all.sh
 ```
 
-This will produce a directory named like `linuxbrew-20190415T234057`. 
-Next, build and install the right set of Linuxbrew packages there:
-
-```basn
-cd "$( ls -td linuxbrew-* | head -1 )"
-~/code/linuxbrew-build/linuxbrew-build.sh
-```
+This will build both SSE4-enabled and SSE4-disabled versions of Linuxbrew.
