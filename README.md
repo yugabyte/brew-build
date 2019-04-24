@@ -15,6 +15,7 @@ cd ~/code
 git clone https://github.com/yugabyte/linuxbrew-build.git
 
 mkdir -p ~/linuxbrew_versions
+cd ~/code/linuxbrew_versions
 ~/code/linuxbrew-build/linuxbrew-clone-and-build-all.sh
 ```
 
