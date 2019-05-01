@@ -1,5 +1,7 @@
 # brew-build
 
+[![Build Status](https://dev.azure.com/yugabyte/yugabyte/_apis/build/status/YugaByte.brew-build?branchName=master)](https://dev.azure.com/yugabyte/yugabyte/_build/latest?definitionId=2&branchName=master)
+
 This set of wrappers scripts allows to build a customized version of Linuxbrew used by the YugaByte DB
 build process. We pre-install the Linuxbrew packages that we need, built with the appropriate compiler
 flags. We ensure that the full path to the root directory of the Linuxbrew installation is long enough so that we can
