@@ -1,4 +1,4 @@
-# linuxbrew-build
+# brew-build
 
 This set of wrappers scripts allows to build a customized version of Linuxbrew used by the YugaByte DB
 build process. We pre-install the Linuxbrew packages that we need, built with the appropriate compiler
