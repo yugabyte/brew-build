@@ -2,6 +2,8 @@ resources:
   containers:
   - container: ubuntu1804
     image: yugabytedb/yb_build_infra_ubuntu1804:v2019-04-30T20_16_36_mikhail
+  - container: centos7
+    image: yugabytedb/yb_build_infra_centos7:v2019-04-30T20_16_52_mikhail
 
 jobs:
 - job: RunInContainer
@@ -11,8 +13,10 @@ jobs:
 
   strategy:
     matrix:
-      ubuntu1804:
-        containerResource: ubuntu1804
+      #ubuntu1804:
+      #  containerResource: ubuntu1804
+      centos7:
+        containerResource: centos7
 
   container: $[ variables['containerResource'] ]
 
