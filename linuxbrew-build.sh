@@ -83,11 +83,15 @@ readonly LINUXBREW_PACKAGES=(
   icu4c
   libtool
   libuuid
-  maven
   ninja
   openssl
   readline
   s3cmd
+)
+
+# Temporarily excluded packages.
+readonly LINUXBREW_PACKAGES_DISABLED=(
+  maven
 )
 
 successful_packages=()
