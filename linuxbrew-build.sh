@@ -52,7 +52,12 @@ else
   export HOMEBREW_ARCH="ivybridge"
 fi
 
-extra_flags="$sse4_flags -mno-avx -mno-avx2 -mno-bmi -mno-bmi2 -mno-fma -no-abm -no-movbe"
+extra_flags="-march=$HOMEBREW_ARCH $sse4_flags -mno-avx -mno-avx2 -mno-bmi -mno-bmi2 -mno-fma"
+
+# These flags might not be understood by the OS-installed compiler but the Linuxbrew-installed
+# compiler should understand them.
+additional_extra_flags="-no-abm -no-movbe"
+
 echo "Extra compiler flags: $extra_flags"
 
 cat <<EOF | patch -p1
@@ -90,7 +95,7 @@ cat <<EOF | patch "$openssl_formula"
        end
        args << "enable-md2"
      end
-+    args += %w[-march=$HOMEBREW_ARCH $extra_flags]
++    args += %w[-march=$HOMEBREW_ARCH $extra_flags $additional_extra_flags]
      system "perl", "./Configure", *args
      system "make", "depend"
      system "make"
