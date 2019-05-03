@@ -52,7 +52,8 @@ else
   export HOMEBREW_ARCH="ivybridge"
 fi
 
-extra_flags="-mno-avx -mno-avx2 -mno-bmi -mno-bmi2 -mno-fma -no-abm -no-movbe"
+extra_flags="$sse4_flags -mno-avx -mno-avx2 -mno-bmi -mno-bmi2 -mno-fma -no-abm -no-movbe"
+echo "Extra compiler flags: $extra_flags"
 
 cat <<EOF | patch -p1
 diff --git a/Library/Homebrew/extend/ENV/super.rb b/Library/Homebrew/extend/ENV/super.rb
@@ -64,7 +65,7 @@ index 2aa440689..c7d31daa1 100644
      self["HOMEBREW_TEMP"] = HOMEBREW_TEMP.to_s
      self["HOMEBREW_OPTFLAGS"] = determine_optflags
 -    self["HOMEBREW_ARCHFLAGS"] = ""
-+    self["HOMEBREW_ARCHFLAGS"] = "-march=$HOMEBREW_ARCH $sse4_flags $extra_flags"
++    self["HOMEBREW_ARCHFLAGS"] = "$extra_flags"
      self["CMAKE_PREFIX_PATH"] = determine_cmake_prefix_path
      self["CMAKE_FRAMEWORK_PATH"] = determine_cmake_frameworks_path
      self["CMAKE_INCLUDE_PATH"] = determine_cmake_include_path
@@ -89,7 +90,7 @@ cat <<EOF | patch "$openssl_formula"
        end
        args << "enable-md2"
      end
-+    args += %w[-march=$HOMEBREW_ARCH $extra_flags $sse4_flags]
++    args += %w[-march=$HOMEBREW_ARCH $extra_flags]
      system "perl", "./Configure", *args
      system "make", "depend"
      system "make"
