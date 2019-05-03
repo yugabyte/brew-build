@@ -38,6 +38,42 @@ LEN=${#BREW_HOME}
 [[ $LEN -eq $ABS_PATH_LIMIT ]] || (echo "Linuxbrew absolute path should be exactly $ABS_PATH_LIMIT \
  bytes, but actual length is $LEN bytes: $BREW_HOME"; exit 1)
 
+# -------------------------------------------------------------------------------------------------
+# Setting compiler flags
+# -------------------------------------------------------------------------------------------------
+
+sse4_flags=""
+if [[ $YB_USE_SSE4 == "0" ]]; then
+  echo "YB_USE_SSE4=$YB_USE_SSE4, disabling use of SSE4"
+  sse4_flags="-mno-sse4.1 -mno-sse4.2"
+  export HOMEBREW_ARCH="core2"
+else
+  echo "YB_USE_SSE4=$YB_USE_SSE4, enabling use of SSE4"
+  export HOMEBREW_ARCH="ivybridge"
+fi
+
+extra_flags="-mno-avx -mno-avx2 -mno-bmi -mno-bmi2 -mno-fma -no-abm -no-movbe"
+
+cat <<EOF | patch -p1
+diff --git a/Library/Homebrew/extend/ENV/super.rb b/Library/Homebrew/extend/ENV/super.rb
+index 2aa440689..c7d31daa1 100644
+--- a/Library/Homebrew/extend/ENV/super.rb
++++ b/Library/Homebrew/extend/ENV/super.rb
+@@ -54,7 +54,7 @@ module Superenv
+     self["HOMEBREW_OPT"] = "#{HOMEBREW_PREFIX}/opt"
+     self["HOMEBREW_TEMP"] = HOMEBREW_TEMP.to_s
+     self["HOMEBREW_OPTFLAGS"] = determine_optflags
+-    self["HOMEBREW_ARCHFLAGS"] = ""
++    self["HOMEBREW_ARCHFLAGS"] = "-march=$HOMEBREW_ARCH $sse4_flags $extra_flags"
+     self["CMAKE_PREFIX_PATH"] = determine_cmake_prefix_path
+     self["CMAKE_FRAMEWORK_PATH"] = determine_cmake_frameworks_path
+     self["CMAKE_INCLUDE_PATH"] = determine_cmake_include_path
+EOF
+
+# -------------------------------------------------------------------------------------------------
+# OpenSSL flags patching
+# -------------------------------------------------------------------------------------------------
+
 openssl_formula=./Library/Taps/homebrew/homebrew-core/Formula/openssl.rb
 openssl_orig=./Library/Taps/homebrew/homebrew-core/Formula/openssl.rb.orig
 
@@ -46,20 +82,6 @@ if [[ ! -e "$openssl_orig" ]]; then
   ./bin/brew info openssl >/dev/null
   cp "$openssl_formula" "$openssl_orig"
 fi
-
-install_args=""
-sse4_flags=""
-if [[ $YB_USE_SSE4 == "0" ]]; then
-  echo "YB_USE_SSE4=$YB_USE_SSE4, disabling use of SSE4"
-  sse4_flags="-mno-sse4.1 -mno-sse4.2"
-  install_args="--build-from-source"
-  export HOMEBREW_ARCH="core2"
-else
-  echo "YB_USE_SSE4=$YB_USE_SSE4, enabling use of SSE4"
-  export HOMEBREW_ARCH="ivybridge"
-fi
-
-extra_flags="-mno-avx -mno-bmi -mno-bmi2 -mno-fma -no-abm -no-movbe"
 
 cp "$openssl_orig" "$openssl_formula"
 cat <<EOF | patch "$openssl_formula"
@@ -98,7 +120,8 @@ successful_packages=()
 failed_packages=()
 
 for package in "${LINUXBREW_PACKAGES[@]}"; do
-  if ( set -x; ./bin/brew install $install_args "$package" ); then
+
+  if ( set -x; ./bin/brew install --build-from-source "$package" ); then
     successful_packages+=( "$package" )
   else
     echo >&2 "Failed to install package: $package"
