@@ -52,7 +52,8 @@ else
   export HOMEBREW_ARCH="ivybridge"
 fi
 
-extra_flags="-march=$HOMEBREW_ARCH $sse4_flags -mno-avx -mno-avx2 -mno-bmi -mno-bmi2 -mno-fma"
+# TODO: figure out why we can't put -march=$HOMEBREW_ARCH in the flags.
+extra_flags="$sse4_flags -mno-avx -mno-avx2 -mno-bmi -mno-bmi2 -mno-fma"
 
 # These flags might not be understood by the OS-installed compiler but the Linuxbrew-installed
 # compiler should understand them.
@@ -135,7 +136,9 @@ for package in "${LINUXBREW_PACKAGES[@]}"; do
   fi
 done
 
-echo "Successfully installed packages: ${successful_packages[*]}"
+if [[ ${#successful_packages[@]} -gt 0 ]]; then
+  echo "Successfully installed packages: ${successful_packages[*]}"
+fi
 
 if [[ ${#failed_packages[@]} -gt 0 ]]; then
   echo >&2 "Failed to install packages: ${failed_packages[*]}"

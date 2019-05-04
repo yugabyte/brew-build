@@ -17,6 +17,23 @@ set -euo pipefail
 
 . "${0%/*}/linuxbrew-common.sh"
 
+function horizontal_line() {
+  echo
+  echo "=========================================================================================="
+  echo
+}
+
+horizontal_line
+cat /proc/cpuinfo
+horizontal_line
+gcc --version
+horizontal_line
+man gcc | cat
+horizontal_line
+# https://stackoverflow.com/questions/5470257/how-to-see-which-flags-march-native-will-activate
+gcc -march=native -Q --help=target
+horizontal_line
+
 export HOMEBREW_CACHE=$PWD/linuxbrew_cache
 export HOMEBREW_LOGS=$PWD/linuxbrew_logs
 
