@@ -3,7 +3,7 @@ resources:
   - container: ubuntu1804
     image: yugabytedb/yb_build_infra_ubuntu1804:v2019-04-30T20_16_36_mikhail
   - container: centos7
-    image: yugabytedb/yb_build_infra_centos7:v2019-04-30T20_16_52_mikhail
+    image: yugabytedb/yb_build_infra_centos7:v2019-05-03T17_24_01_mbautin
 
 jobs:
 - job: RunInContainer
