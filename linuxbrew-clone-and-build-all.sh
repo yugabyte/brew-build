@@ -28,7 +28,11 @@ cat /proc/cpuinfo
 horizontal_line
 gcc --version
 horizontal_line
+set +e
+# This might fail if manpages are not installed.
+# Pipe to "cat" to turn pagination off.
 man gcc | cat
+set -e
 horizontal_line
 # https://stackoverflow.com/questions/5470257/how-to-see-which-flags-march-native-will-activate
 gcc -march=native -Q --help=target
