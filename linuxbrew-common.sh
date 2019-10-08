@@ -22,30 +22,52 @@ fi
 
 declare -i -r ABS_PATH_LIMIT=85
 
-get_brew_link() {
-  local brew_dirname="linuxbrew-$(date +%Y%m%dT%H%M%S)"
-  local brew_link="$(realpath .)/$brew_dirname"
-  local len=${#brew_link}
+log() {
+  echo >&2 "[$( date +%Y-%m-%dT%H:%M:%S )] $*"
+}
+
+fatal() {
+  log "$@"
+  exit 1
+}
+
+set_brew_timestamp() {
+  if [[ -z ${YB_BREW_TIMESTAMP:-} ]]; then
+    export YB_BREW_TIMESTAMP=$(date +%Y%m%dT%H%M%S)
+  fi
+}
+
+get_brew_path_prefix() {
+  set_brew_timestamp
+  local brew_dirname="$YB_BREW_DIR_PREFIX-$YB_BREW_TIMESTAMP"
+  local brew_path_prefix="$(realpath .)/$brew_dirname"
+  if [[ -n ${YB_BREW_SUFFIX:-} ]]; then
+    brew_path_prefix+="-$YB_BREW_SUFFIX"
+  fi
+  local len=${#brew_path_prefix}
   if [[ $len -gt $ABS_PATH_LIMIT ]]; then
-    echo "Linuxbrew link absolute path should be no more than $ABS_PATH_LIMIT bytes, but actual" \
-         "length is $len bytes: $brew_link" >&2
+    echo "Brew link absolute path should be no more than $ABS_PATH_LIMIT bytes, but actual" \
+         "length is $len bytes: $brew_path_prefix" >&2
     exit 1
   fi
-  echo "$brew_link"
+  echo "$brew_path_prefix"
 }
 
 readonly YB_LINUXBREW_BUILD_ROOT=$( cd "${BASH_SOURCE%/*}" && pwd )
 
-# Prepend 'x' symbols to source path up to specified length.
+# Extends the given path so that it has a fixed length.
 # Parameters:
 #   path - source path.
 #   len - required output path length. Optional parameter, if absent uses $ABS_PATH_LIMIT.
 get_fixed_length_path() {
   local path="$1"
+  if [[ ! -d $path ]]; then
+    fatal "Directory '$path' does not exist"
+  fi
   local len="${2:-$ABS_PATH_LIMIT}"
   # Generate a path of a fixed length (up to a certain maximum length).
-  local p="abcdefghijklmnopqrstuvwxyz0123456789"
-  echo "$path-$(echo "$p$p$p$p$p" )" | cut -c-$len
+  local sha1=$( cd "$path" && git rev-parse HEAD )
+  echo "$path-$(echo "$sha1-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" )" | cut -c-$len
 }
 
 # Escape special characters in source string, so it can be used with sed as simple string pattern.
@@ -69,3 +91,9 @@ get_escaped_sed_replacement_str() {
   local delim=${2:-/}
   sed "s/[$delim&\]/\\\\&/g" <<<$1
 }
+
+if [[ $OSTYPE == linux* ]]; then
+  YB_BREW_DIR_PREFIX=linuxbrew
+else
+  YB_BREW_DIR_PREFIX=homebrew
+fi

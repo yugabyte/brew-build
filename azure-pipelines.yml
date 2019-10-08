@@ -1,38 +1,35 @@
 resources:
   containers:
-  - container: ubuntu1804
-    image: yugabytedb/yb_build_infra_ubuntu1804:v2019-04-30T20_16_36_mikhail
   - container: centos7
-    image: yugabytedb/yb_build_infra_centos7:v2019-05-03T17_24_01_mbautin
+    image: yugabytedb/yb_build_infra_centos7:v2019-09-01T14_58_09_mbautin
+
+# https://docs.microsoft.com/en-us/azure/devops/pipelines/build/triggers?view=azure-devops&tabs=yaml
+trigger:
+  batch: true
+  branches:
+    include:
+    - master
 
 jobs:
-- job: RunInContainer
-  pool:
-    vmImage: 'ubuntu-16.04'
-  timeoutInMinutes: 0
+  - job: RunInContainer
+    pool:
+      vmImage: 'ubuntu-16.04'
+    timeoutInMinutes: 0
 
-  strategy:
-    matrix:
-      #ubuntu1804:
-      #  containerResource: ubuntu1804
-      centos7:
-        containerResource: centos7
+    strategy:
+      matrix:
+        centos7:
+          containerResource: centos7
 
-  container: $[ variables['containerResource'] ]
+    container: $[ variables['containerResource'] ]
 
-  steps:
-    - script: |
-        set -euxo pipefail
-        repo_dir=$PWD
-        tag=v0.$( git rev-list --count HEAD )
-        mkdir ~/linuxbrew_versions
-        cd ~/linuxbrew_versions
-        "$repo_dir/linuxbrew-clone-and-build-all.sh"
-        create_release_cmd=( hub release create "$tag" -m "Release $tag" )
-        for release_artifact in *.tar.gz; do
-          create_release_cmd+=( -a "$PWD/$release_artifact" )
-        done
-        cd "$repo_dir"
-        "${create_release_cmd[@]}"
-      env:
-        GITHUB_TOKEN: $(yugabyte.githubToken)
+    steps:
+      - script: |
+          sudo mkdir -p /opt/yb-build
+          sudo chown yugabyte-ci /opt/yb-build
+          checkout_dir=$PWD
+          chmod -R a+r "$checkout_dir"
+          find "$checkout_dir" -executable -type f -exec chmod a+x {} \;
+          sudo -u yugabyte-ci -E /bin/bash -c "cd '$checkout_dir' && ./build-and-release.sh"
+        env:
+          GITHUB_TOKEN: $(yugabyte.githubToken)

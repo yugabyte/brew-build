@@ -17,63 +17,37 @@ set -euo pipefail
 
 . "${0%/*}/linuxbrew-common.sh"
 
-function horizontal_line() {
-  echo
-  echo "=========================================================================================="
-  echo
-}
+export HOMEBREW_CACHE=$PWD/brew_cache
+export HOMEBREW_LOGS=$PWD/brew_logs
 
-horizontal_line
-cat /proc/cpuinfo
-horizontal_line
-gcc --version
-horizontal_line
-set +e
-# This might fail if manpages are not installed.
-# Pipe to "cat" to turn pagination off.
-man gcc | cat
-set -e
-horizontal_line
-# https://stackoverflow.com/questions/5470257/how-to-see-which-flags-march-native-will-activate
-gcc -march=native -Q --help=target
-horizontal_line
+set_brew_timestamp
 
-export HOMEBREW_CACHE=$PWD/linuxbrew_cache
-export HOMEBREW_LOGS=$PWD/linuxbrew_logs
-
-"$YB_LINUXBREW_BUILD_ROOT"/linuxbrew-clone.sh
-
-BREW_HOME=$( cat "latest_brew_home.txt" )
-BREW_HOME_BASENAME=${BREW_HOME##*/}
-BREW_LINK=$( cat "latest_brew_link.txt" )
-BREW_LINK_NOSSE4=$BREW_LINK-nosse4
-BREW_HOME_NOSSE4=$( get_fixed_length_path "$BREW_LINK_NOSSE4" )
-(
-  set -x
-  cp -R "$BREW_HOME" "$BREW_HOME_NOSSE4"
-  ln -s "$BREW_HOME_NOSSE4" "$BREW_LINK_NOSSE4"
-)
-
-logs_dir=$PWD/logs
-mkdir -p "$logs_dir"
-log_path=$logs_dir/$BREW_HOME_BASENAME.log
-echo "Writing log to $log_path"
-(
-  time (
-    for YB_USE_SSE4 in 1 0; do
-      export YB_USE_SSE4
-      if [[ $YB_USE_SSE4 == "1" ]]; then
-        current_brew_home=$BREW_HOME
+time (
+  for YB_USE_SSE4 in 0 1; do
+    export YB_USE_SSE4
+    if [[ $YB_USE_SSE4 == "1" ]]; then
+      export YB_BREW_SUFFIX=""
+    else
+      export YB_BREW_SUFFIX="nosse4"
+    fi
+    rm -f "latest_brew_clone_dir.txt"
+    "$YB_LINUXBREW_BUILD_ROOT"/linuxbrew-clone.sh
+    set -x
+    brew_home=$( cat "latest_brew_clone_dir.txt" )
+    brew_path_prefix=$( cat "latest_brew_path_prefix.txt" )
+    archive_path=$brew_path_prefix.tar.gz
+    if [[ -d $brew_home && -e $archive_path ]]; then
+      if [[ ${YB_BREW_REUSE_PREBUILT:-} == "1" ]]; then
+        log "File $archive_path already exists, will not rebuild."
+        continue
       else
-        current_brew_home=$BREW_HOME_NOSSE4
+        fatal "File $archive_path already exists"
       fi
-      (
-        set -x
-        cd "$current_brew_home"
-        time "$YB_LINUXBREW_BUILD_ROOT"/linuxbrew-build.sh
-      )
-    done
-  )
-) 2>&1 | tee "$log_path"
-
-echo "Log available at $log_path"
+    fi
+    (
+      set -x
+      cd "$brew_home"
+      time "$YB_LINUXBREW_BUILD_ROOT"/linuxbrew-build.sh
+    )
+  done
+)

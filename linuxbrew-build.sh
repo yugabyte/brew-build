@@ -38,49 +38,6 @@ LEN=${#BREW_HOME}
 [[ $LEN -eq $ABS_PATH_LIMIT ]] || (echo "Linuxbrew absolute path should be exactly $ABS_PATH_LIMIT \
  bytes, but actual length is $LEN bytes: $BREW_HOME"; exit 1)
 
-# -------------------------------------------------------------------------------------------------
-# Setting compiler flags
-# -------------------------------------------------------------------------------------------------
-
-sse4_flags=""
-if [[ $YB_USE_SSE4 == "0" ]]; then
-  echo "YB_USE_SSE4=$YB_USE_SSE4, disabling use of SSE4"
-  sse4_flags="-mno-sse4.1 -mno-sse4.2"
-  export HOMEBREW_ARCH="core2"
-else
-  echo "YB_USE_SSE4=$YB_USE_SSE4, enabling use of SSE4"
-  export HOMEBREW_ARCH="ivybridge"
-fi
-
-# TODO: figure out why we can't put -march=$HOMEBREW_ARCH in the flags.
-extra_flags="$sse4_flags -mno-avx -mno-avx2 -mno-bmi -mno-bmi2 -mno-fma"
-
-# These flags might not be understood by the OS-installed compiler but the Linuxbrew-installed
-# compiler should understand them.
-additional_extra_flags="-no-abm -no-movbe"
-
-echo "Extra compiler flags: $extra_flags"
-
-cat <<EOF | patch -p1
-diff --git a/Library/Homebrew/extend/ENV/super.rb b/Library/Homebrew/extend/ENV/super.rb
-index 2aa440689..c7d31daa1 100644
---- a/Library/Homebrew/extend/ENV/super.rb
-+++ b/Library/Homebrew/extend/ENV/super.rb
-@@ -54,7 +54,7 @@ module Superenv
-     self["HOMEBREW_OPT"] = "#{HOMEBREW_PREFIX}/opt"
-     self["HOMEBREW_TEMP"] = HOMEBREW_TEMP.to_s
-     self["HOMEBREW_OPTFLAGS"] = determine_optflags
--    self["HOMEBREW_ARCHFLAGS"] = ""
-+    self["HOMEBREW_ARCHFLAGS"] = "$extra_flags"
-     self["CMAKE_PREFIX_PATH"] = determine_cmake_prefix_path
-     self["CMAKE_FRAMEWORK_PATH"] = determine_cmake_frameworks_path
-     self["CMAKE_INCLUDE_PATH"] = determine_cmake_include_path
-EOF
-
-# -------------------------------------------------------------------------------------------------
-# OpenSSL flags patching
-# -------------------------------------------------------------------------------------------------
-
 openssl_formula=./Library/Taps/homebrew/homebrew-core/Formula/openssl.rb
 openssl_orig=./Library/Taps/homebrew/homebrew-core/Formula/openssl.rb.orig
 
@@ -90,20 +47,56 @@ if [[ ! -e "$openssl_orig" ]]; then
   cp "$openssl_formula" "$openssl_orig"
 fi
 
+install_args=""
+sse4_flags=""
+if [[ $YB_USE_SSE4 == "0" ]]; then
+  echo "YB_USE_SSE4=$YB_USE_SSE4, disabling use of SSE4"
+  sse4_flags="-mno-sse4.1 -mno-sse4.2"
+  install_args="--build-from-source"
+  export HOMEBREW_ARCH="core2"
+else
+  echo "YB_USE_SSE4=$YB_USE_SSE4, enabling use of SSE4"
+  # export HOMEBREW_ARCH="ivybridge"
+  # https://arnon.dk/which-architecture-should-i-compile-for/
+  # Ivy Bridge (Intel iN 3XXX and Xeons E3-12xx v2-series, E5-14xx v2/24xx v2-series, E5-16xx
+  # v2/26xx v2/46xx v2-series, E7-28xx v2/48xx v2/88xx v2-series) – -march=core-avx-i
+  export HOMEBREW_ARCH="core-avx-i"
+fi
+
+extra_flags="-mno-avx -mno-bmi -mno-bmi2 -mno-fma -no-abm -no-movbe"
+
 cp "$openssl_orig" "$openssl_formula"
-cat <<EOF | patch "$openssl_formula"
+openssl_rb_extra_line="args += %w[-march=$HOMEBREW_ARCH $extra_flags $sse4_flags]"
+if [[ $OSTYPE == linux* ]]; then
+  cat <<EOF | patch "$openssl_formula"
 @@ -61,6 +61,7 @@ class Openssl < Formula
        end
        args << "enable-md2"
      end
-+    args += %w[-march=$HOMEBREW_ARCH $extra_flags $additional_extra_flags]
++    $openssl_rb_extra_line
      system "perl", "./Configure", *args
      system "make", "depend"
      system "make"
 EOF
-unset sse4_args
+else
+  cat <<EOF | patch "$openssl_formula"
+diff --git a/Formula/openssl.rb b/Formula/openssl.rb
+index 5810436..83b213d 100644
+--- a/Formula/openssl.rb
++++ b/Formula/openssl.rb
+@@ -38,6 +38,7 @@ class Openssl < Formula
+       darwin64-x86_64-cc
+       enable-ec_nistp_64_gcc_128
+     ]
++    $openssl_rb_extra_line
+     system "perl", "./Configure", *args
+     system "make", "depend"
+     system "make"
+EOF
+fi
+unset sse4_flags
 
-readonly LINUXBREW_PACKAGES=(
+LINUXBREW_PACKAGES=(
   autoconf
   automake
   bzip2
@@ -118,17 +111,11 @@ readonly LINUXBREW_PACKAGES=(
   s3cmd
 )
 
-# Temporarily excluded packages.
-readonly LINUXBREW_PACKAGES_DISABLED=(
-  maven
-)
-
 successful_packages=()
 failed_packages=()
 
 for package in "${LINUXBREW_PACKAGES[@]}"; do
-
-  if ( set -x; ./bin/brew install --build-from-source "$package" ); then
+  if ( set -x; ./bin/brew install $install_args "$package" ); then
     successful_packages+=( "$package" )
   else
     echo >&2 "Failed to install package: $package"
@@ -136,9 +123,7 @@ for package in "${LINUXBREW_PACKAGES[@]}"; do
   fi
 done
 
-if [[ ${#successful_packages[@]} -gt 0 ]]; then
-  echo "Successfully installed packages: ${successful_packages[*]}"
-fi
+echo "Successfully installed packages: ${successful_packages[*]}"
 
 if [[ ${#failed_packages[@]} -gt 0 ]]; then
   echo >&2 "Failed to install packages: ${failed_packages[*]}"
