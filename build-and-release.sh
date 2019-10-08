@@ -4,6 +4,14 @@ set -euo pipefail
 
 . "${BASH_SOURCE%/*}/linuxbrew-common.sh"
 
+run_hub_cmd() {
+  if [[ -n ${GITHUB_TOKEN:-} && ${GITHUB_TOKEN:-} != *yugabyte.githubToken* ]]; then
+    ( set -x; hub "$@" )
+  else
+    log "Would have run the command but the GitHub token is not set: hub $*"
+  fi
+}
+
 recreate_release=false
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -43,7 +51,7 @@ mkdir -p "$linuxbrew_dir"
 cd "$linuxbrew_dir"
 "$repo_dir/linuxbrew-clone-and-build-all.sh"
 
-create_release_cmd=( hub release create "$tag" -m "Release $tag" )
+create_release_cmd=( release create "$tag" -m "Release $tag" )
 has_files=false
 archive_prefix="$linuxbrew_dir/$YB_BREW_DIR_PREFIX-$YB_BREW_TIMESTAMP"
 log "Looking for .tar.gz files and SHA256 checksum files with prefix: '$archive_prefix'"
@@ -66,8 +74,7 @@ cd "$this_repo_top_dir"
 if "$recreate_release"; then
   log "Deleting the old release with this tag as requested by --recreate-release."
   set +e
-  ( set -x; hub release delete "$tag" )
+  run_hub_cmd release delete "$tag"
   set -e
 fi
-set -x
-"${create_release_cmd[@]}"
+run_hub_cmd "${create_release_cmd[@]}"
