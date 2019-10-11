@@ -36,8 +36,8 @@ BREW_HOME=$PWD
 
 LEN=${#BREW_HOME}
 [[ $LEN -eq $ABS_PATH_LIMIT ]] ||
-  fatal "Homebrew absolute path should be exactly $ABS_PATH_LIMIT bytes, but actual length is"
-       "$LEN bytes: $BREW_HOME"
+  fatal "Homebrew absolute path should be exactly $ABS_PATH_LIMIT bytes, but actual length is" \
+        "$LEN bytes: $BREW_HOME"
 
 openssl_formula=./Library/Taps/homebrew/homebrew-core/Formula/openssl.rb
 openssl_orig=./Library/Taps/homebrew/homebrew-core/Formula/openssl.rb.orig
