@@ -15,7 +15,7 @@
 
 set -euo pipefail
 
-. "${0%/*}/linuxbrew-common.sh"
+. "${0%/*}/brew-common.sh"
 
 export HOMEBREW_CACHE=$PWD/brew_cache
 export HOMEBREW_LOGS=$PWD/brew_logs
@@ -31,7 +31,7 @@ time (
       export YB_BREW_SUFFIX="nosse4"
     fi
     rm -f "latest_brew_clone_dir.txt"
-    "$YB_LINUXBREW_BUILD_ROOT"/linuxbrew-clone.sh
+    "$c"/brew-clone.sh
     set -x
     brew_home=$( cat "latest_brew_clone_dir.txt" )
     brew_path_prefix=$( cat "latest_brew_path_prefix.txt" )
@@ -47,7 +47,7 @@ time (
     (
       set -x
       cd "$brew_home"
-      time "$YB_LINUXBREW_BUILD_ROOT"/linuxbrew-build.sh
+      time "$YB_BREW_BUILD_ROOT"/brew-build.sh
     )
   done
 )

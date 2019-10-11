@@ -53,7 +53,7 @@ get_brew_path_prefix() {
   echo "$brew_path_prefix"
 }
 
-readonly YB_LINUXBREW_BUILD_ROOT=$( cd "${BASH_SOURCE%/*}" && pwd )
+readonly YB_BREW_BUILD_ROOT=$( cd "${BASH_SOURCE%/*}" && pwd )
 
 # Extends the given path so that it has a fixed length.
 # Parameters:

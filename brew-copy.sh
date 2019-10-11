@@ -15,13 +15,15 @@
 
 set -euo pipefail
 
-. "${0%/*}/linuxbrew-common.sh"
+. "${0%/*}/brew-common.sh"
+
+readonly script_name=${BASH_SOURCE##*/}
 
 show_help_and_exit() {
   cat >&2 <<-EOT
-linuxbrew-copy.sh creates a copy of linuxbrew installation in current directory and updates \
-it with new linuxbrew home path.
-Usage: ${0##*/} <source_linuxbrew_home_path>
+$script_name creates a copy of Homebrew/Linuxbrew installation in current directory and updates \
+it with new Homebrew/Linuxbrew home path.
+Usage: ${0##*/} <source_brew_home_path>
 EOT
   exit 1
 }
@@ -32,7 +34,7 @@ fi
 
 SRC_BREW_HOME=$(realpath $1)
 if [[ ! -x $SRC_BREW_HOME/bin/brew ]]; then
-  echo "<source linux brew home path> should point to Linuxbrew directory." >&2
+  echo >&2 "<source_brew_home_path> should point to a Homebrew/Linuxbrew directory."
   show_help_and_exit
 fi
 

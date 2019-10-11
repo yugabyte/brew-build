@@ -15,18 +15,18 @@
 
 set -euo pipefail
 
-COMMON_SH="${0%/*}/linuxbrew-common.sh"
+COMMON_SH="${0%/*}/brew-common.sh"
 . "$COMMON_SH"
 
 export HOMEBREW_NO_AUTO_UPDATE=1
 
-[[ -x ./bin/brew ]] || (echo "This script should be run inside Linuxbrew directory."; exit 1)
+[[ -x ./bin/brew ]] || fatal "This script should be run inside Homebrew/Linuxbrew directory."
 
 YB_USE_SSE4=${YB_USE_SSE4:-1}
 
 echo
 echo "============================================================================================"
-echo "Building Linuxbrew in $PWD"
+echo "Building Homebrew/Linuxbrew in $PWD"
 echo "YB_USE_SSE4=$YB_USE_SSE4"
 echo "============================================================================================"
 echo
@@ -35,8 +35,9 @@ cd "$(realpath .)"
 BREW_HOME=$PWD
 
 LEN=${#BREW_HOME}
-[[ $LEN -eq $ABS_PATH_LIMIT ]] || (echo "Linuxbrew absolute path should be exactly $ABS_PATH_LIMIT \
- bytes, but actual length is $LEN bytes: $BREW_HOME"; exit 1)
+[[ $LEN -eq $ABS_PATH_LIMIT ]] ||
+  fatal "Homebrew absolute path should be exactly $ABS_PATH_LIMIT bytes, but actual length is"
+       "$LEN bytes: $BREW_HOME"
 
 openssl_formula=./Library/Taps/homebrew/homebrew-core/Formula/openssl.rb
 openssl_orig=./Library/Taps/homebrew/homebrew-core/Formula/openssl.rb.orig
@@ -95,7 +96,7 @@ EOF
 fi
 unset sse4_flags
 
-LINUXBREW_PACKAGES=(
+BREW_PACKAGES=(
   autoconf
   automake
   bzip2
@@ -113,7 +114,7 @@ LINUXBREW_PACKAGES=(
 successful_packages=()
 failed_packages=()
 
-for package in "${LINUXBREW_PACKAGES[@]}"; do
+for package in "${BREW_PACKAGES[@]}"; do
   if ( set -x; ./bin/brew install $install_args "$package" ); then
     successful_packages+=( "$package" )
   else
@@ -131,7 +132,7 @@ fi
 
 if [[ ! -e VERSION_INFO ]]; then
   commit_id=$(git rev-parse HEAD)
-  echo "Linuxbrew commit ID: $commit_id" >VERSION_INFO.tmp
+  echo "Homebrew/Linuxbrew commit ID: $commit_id" >VERSION_INFO.tmp
   pushd Library/Taps/homebrew/homebrew-core
   commit_id=$(git rev-parse HEAD)
   popd
@@ -146,7 +147,7 @@ do
   if [[ -e $f ]]; then
     real_target=$(realpath "$f")
     if [[ $real_target != $BREW_HOME* && $real_target != $target ]]; then
-      # We want to convert relative links pointing outside of Linuxbrew to absolute links.
+      # We want to convert relative links pointing outside of Homebrew/Linuxbrew to absolute links.
       # -f to allow relinking. -T to avoid linking inside directory if $f already exists as
       # directory.
       ln -sfT "$real_target" "$f"
@@ -181,7 +182,7 @@ brew_home_dir=${BREW_HOME##*/}
 distr_name=${brew_home_dir%-*}
 archive_name=$distr_name.tar.gz
 distr_path=$(realpath "../$archive_name")
-echo "Preparing Linuxbrew distribution archive: $distr_path ..."
+echo "Preparing Homebrew/Linuxbrew distribution archive: $distr_path ..."
 distr_name_escaped=$(get_escaped_sed_replacement_str "$distr_name" "%")
 tar zcf "$distr_path" . --transform s%^./%$distr_name_escaped/% --exclude ".git"
 pushd ..

@@ -13,13 +13,13 @@
 # under the License.
 #
 
-# This script creates a new Linuxbrew directory by cloning the upstream GitHub repository. The
-# directory path is chosen to be of a fixed length, and a more human-readable symlink is created
+# This script creates a new Homebrew/Linuxbrew directory by cloning the upstream GitHub repository.
+# The directory path is chosen to be of a fixed length, and a more human-readable symlink is created
 # to point to the resulting directory.
 
 set -euo pipefail
 
-. "${0%/*}/linuxbrew-common.sh"
+. "${0%/*}/brew-common.sh"
 
 brew_path_prefix=$(get_brew_path_prefix)
 if [[ -d $brew_path_prefix ]]; then
