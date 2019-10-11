@@ -47,12 +47,11 @@ if [[ ! -e "$openssl_orig" ]]; then
   cp "$openssl_formula" "$openssl_orig"
 fi
 
-install_args=""
+install_args="--build-from-source"
 sse4_flags=""
 if [[ $YB_USE_SSE4 == "0" ]]; then
   echo "YB_USE_SSE4=$YB_USE_SSE4, disabling use of SSE4"
   sse4_flags="-mno-sse4.1 -mno-sse4.2"
-  install_args="--build-from-source"
   export HOMEBREW_ARCH="core2"
 else
   echo "YB_USE_SSE4=$YB_USE_SSE4, enabling use of SSE4"

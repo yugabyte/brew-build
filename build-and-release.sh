@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-. "${BASH_SOURCE%/*}/linuxbrew-common.sh"
+. "${BASH_SOURCE%/*}/brew-common.sh"
 
 run_hub_cmd() {
   if [[ -n ${GITHUB_TOKEN:-} && ${GITHUB_TOKEN:-} != *yugabyte.githubToken* ]]; then
@@ -46,14 +46,14 @@ num_commits=$( git rev-list --count HEAD )
 num_commits=$( printf "%06d" $num_commits )
 set_brew_timestamp
 tag=$YB_BREW_TIMESTAMP
-readonly linuxbrew_dir=/opt/yb-build/brew
-mkdir -p "$linuxbrew_dir"
-cd "$linuxbrew_dir"
-"$repo_dir/linuxbrew-clone-and-build-all.sh"
+readonly brew_dir=/opt/yb-build/brew
+mkdir -p "$brew_dir"
+cd "$brew_dir"
+"$repo_dir/brew-clone-and-build-all.sh"
 
 create_release_cmd=( release create "$tag" -m "Release $tag" )
 has_files=false
-archive_prefix="$linuxbrew_dir/$YB_BREW_DIR_PREFIX-$YB_BREW_TIMESTAMP"
+archive_prefix="$brew_dir/$YB_BREW_DIR_PREFIX-$YB_BREW_TIMESTAMP"
 log "Looking for .tar.gz files and SHA256 checksum files with prefix: '$archive_prefix'"
 for f in "$archive_prefix.tar.gz" \
          "$archive_prefix.tar.gz.sha256" \

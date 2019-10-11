@@ -46,8 +46,8 @@ get_brew_path_prefix() {
   fi
   local len=${#brew_path_prefix}
   if [[ $len -gt $ABS_PATH_LIMIT ]]; then
-    echo "Brew link absolute path should be no more than $ABS_PATH_LIMIT bytes, but actual" \
-         "length is $len bytes: $brew_path_prefix" >&2
+    echo "Homebrew/Linuxbrew absolute path should be no more than $ABS_PATH_LIMIT bytes, but " \
+         "actual length is $len bytes: $brew_path_prefix" >&2
     exit 1
   fi
   echo "$brew_path_prefix"
