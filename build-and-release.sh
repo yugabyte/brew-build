@@ -32,6 +32,16 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
+if [[ -z ${GITHUB_TOKEN:-} ]]; then
+  log "GITHUB_TOKEN is not set, won't be able to upload release artifacts"
+elif [[ ${#GITHUB_TOKEN} != 40 ]]; then
+  log "GITHUB_TOKEN has unexpected length: ${#GITHUB_TOKEN}, 40 characters expected"
+fi
+
+if [[ ${GITHUB_TOKEN:-} == "(yugabyte.githubToken)" ]]; then
+  log "GITHUB_TOKEN has its default value (yugabyte.githubToken), probably not set."
+fi
+
 this_repo_top_dir=$( cd "$( dirname "$0" )" && git rev-parse --show-toplevel )
 if [[ ! -d $this_repo_top_dir ]]; then
   fatal "Failed to determine the top directory of the Git repository containing this script"
