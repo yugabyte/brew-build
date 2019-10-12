@@ -36,6 +36,8 @@ if [[ -z ${GITHUB_TOKEN:-} ]]; then
   log "GITHUB_TOKEN is not set, won't be able to upload release artifacts"
 elif [[ ${#GITHUB_TOKEN} != 40 ]]; then
   log "GITHUB_TOKEN has unexpected length: ${#GITHUB_TOKEN}, 40 characters expected"
+else
+  log "GITHUB_TOKEN has the expected length of 40 characters"
 fi
 
 if [[ ${GITHUB_TOKEN:-} == "(yugabyte.githubToken)" ]]; then
