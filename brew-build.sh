@@ -111,11 +111,24 @@ BREW_PACKAGES=(
   s3cmd
 )
 
+BREW_BIN_PACKAGES=(
+  gcc@8
+)
+
 successful_packages=()
 failed_packages=()
 
 for package in "${BREW_PACKAGES[@]}"; do
   if ( set -x; ./bin/brew install $install_args "$package" ); then
+    successful_packages+=( "$package" )
+  else
+    echo >&2 "Failed to install package: $package"
+    failed_packages+=( "$package" )
+  fi
+done
+
+for package in "${BREW_BIN_PACKAGES[@]}"; do
+  if ( set -x; ./bin/brew install "$package" ); then
     successful_packages+=( "$package" )
   else
     echo >&2 "Failed to install package: $package"
