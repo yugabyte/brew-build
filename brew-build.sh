@@ -15,29 +15,73 @@
 
 set -euo pipefail
 
-COMMON_SH="${0%/*}/brew-common.sh"
+readonly COMMON_SH="${0%/*}/brew-common.sh"
 . "$COMMON_SH"
 
+# -------------------------------------------------------------------------------------------------
+# Constants
+# -------------------------------------------------------------------------------------------------
+
+readonly YB_USE_SSE4=${YB_USE_SSE4:-1}
 export HOMEBREW_NO_AUTO_UPDATE=1
+BREW_FROM_SRC_PACKAGES=(
+  autoconf
+  automake
+  bzip2
+  flex
+  gcc
+  icu4c
+  libtool
+  libuuid
+  ninja
+  openssl
+  readline
+  s3cmd
+)
 
-[[ -x ./bin/brew ]] || fatal "This script should be run inside Homebrew/Linuxbrew directory."
+BREW_BIN_PACKAGES=(
+  gcc@8
+)
 
-YB_USE_SSE4=${YB_USE_SSE4:-1}
+# -------------------------------------------------------------------------------------------------
+# Functions
+# -------------------------------------------------------------------------------------------------
 
-echo
-echo "============================================================================================"
-echo "Building Homebrew/Linuxbrew in $PWD"
-echo "YB_USE_SSE4=$YB_USE_SSE4"
-echo "============================================================================================"
-echo
+brew_install_packages() {
+  local package
+  for package in "$@"; do
+    if ( set -x; ./bin/brew install $install_args "$package" ); then
+      successful_packages+=( "$package" )
+    else
+      log "Failed to install package: $package"
+      failed_packages+=( "$package" )
+    fi
+  done
+}
+
+# -------------------------------------------------------------------------------------------------
+# Main script
+# -------------------------------------------------------------------------------------------------
+
+if [[ ! -x ./bin/brew ]]; then
+  fatal "This script should be run inside Homebrew/Linuxbrew directory."
+fi
 
 cd "$(realpath .)"
 BREW_HOME=$PWD
 
+echo
+echo "============================================================================================"
+echo "Building Homebrew/Linuxbrew in $BREW_HOME"
+echo "YB_USE_SSE4=$YB_USE_SSE4"
+echo "============================================================================================"
+echo
+
 LEN=${#BREW_HOME}
-[[ $LEN -eq $ABS_PATH_LIMIT ]] ||
+if [[ $LEN -ne $ABS_PATH_LIMIT ]]; then
   fatal "Homebrew absolute path should be exactly $ABS_PATH_LIMIT bytes, but actual length is" \
         "$LEN bytes: $BREW_HOME"
+fi
 
 openssl_formula=./Library/Taps/homebrew/homebrew-core/Formula/openssl.rb
 openssl_orig=./Library/Taps/homebrew/homebrew-core/Formula/openssl.rb.orig
@@ -48,7 +92,6 @@ if [[ ! -e "$openssl_orig" ]]; then
   cp "$openssl_formula" "$openssl_orig"
 fi
 
-install_args="--build-from-source"
 sse4_flags=""
 if [[ $YB_USE_SSE4 == "0" ]]; then
   echo "YB_USE_SSE4=$YB_USE_SSE4, disabling use of SSE4"
@@ -96,45 +139,27 @@ EOF
 fi
 unset sse4_flags
 
-BREW_PACKAGES=(
-  autoconf
-  automake
-  bzip2
-  flex
-  gcc
-  icu4c
-  libtool
-  libuuid
-  ninja
-  openssl
-  readline
-  s3cmd
-)
+# -------------------------------------------------------------------------------------------------
+# Package installation
+# -------------------------------------------------------------------------------------------------
 
-BREW_BIN_PACKAGES=(
-  gcc@8
-)
+if [[ ${YB_BREW_BUILD_UNIT_TEST_MODE:-0} == "1" ]]; then
+  BREW_FROM_SRC_PACKAGES=()
+  BREW_BIN_PACKAGES=( patchelf )
+fi
 
 successful_packages=()
 failed_packages=()
 
-for package in "${BREW_PACKAGES[@]}"; do
-  if ( set -x; ./bin/brew install $install_args "$package" ); then
-    successful_packages+=( "$package" )
-  else
-    echo >&2 "Failed to install package: $package"
-    failed_packages+=( "$package" )
-  fi
-done
-
-for package in "${BREW_BIN_PACKAGES[@]}"; do
-  if ( set -x; ./bin/brew install "$package" ); then
-    successful_packages+=( "$package" )
-  else
-    echo >&2 "Failed to install package: $package"
-    failed_packages+=( "$package" )
-  fi
-done
+install_args=""
+if [[ ${#BREW_BIN_PACKAGES[@]} -gt 0 ]]; then
+  brew_install_packages "${BREW_BIN_PACKAGES[@]}"
+fi
+install_args="--build-from-source"
+if [[ ${#BREW_FROM_SRC_PACKAGES[@]} -gt 0 ]]; then
+  brew_install_packages "${BREW_FROM_SRC_PACKAGES[@]}"
+fi
+unset install_args
 
 echo "Successfully installed packages: ${successful_packages[*]}"
 
@@ -166,7 +191,7 @@ do
       ln -sfT "$real_target" "$f"
     fi
   else
-    echo >&2 "Link $f seems broken"
+    log "Link $f seems broken"
   fi
 done
 
@@ -185,9 +210,11 @@ do
   fi
 done | sort >LINKS_TO_PATCH
 
+git rev-parse HEAD >GIT_SHA1
+
 BREW_HOME_ESCAPED=$(get_escaped_sed_replacement_str "$BREW_HOME")
 
-cp $COMMON_SH .
+cp "$COMMON_SH" .
 sed "s/{{ orig_brew_home }}/$BREW_HOME_ESCAPED/g" "${0%/*}/post_install.template" >post_install.sh
 chmod +x post_install.sh
 
@@ -199,6 +226,6 @@ echo "Preparing Homebrew/Linuxbrew distribution archive: $distr_path ..."
 distr_name_escaped=$(get_escaped_sed_replacement_str "$distr_name" "%")
 tar zcf "$distr_path" . --transform s%^./%$distr_name_escaped/% --exclude ".git"
 pushd ..
-sha256sum $archive_name >$archive_name.sha256
+sha256sum "$archive_name" >$archive_name.sha256
 popd
 echo "Done"

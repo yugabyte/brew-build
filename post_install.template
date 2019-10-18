@@ -21,43 +21,52 @@ set -euo pipefail
 
 . "${0%/*}/brew-common.sh"
 
-BREW_HOME="${0%/*}"
-[[ -x $BREW_HOME/bin/brew ]] || \
-  (echo "This script should be located inside Homebrew/Linuxbrew directory."; exit 1)
+readonly script_dir=$( cd "$( dirname "$0" )" && pwd )
+if [[ ! -x $script_dir/bin/brew ]]; then
+  fatal "This script should be located inside Homebrew/Linuxbrew directory."
+fi
 
-# {{ orig_brew_home }} is being replaced with original Homebrew/Linuxbrew home path.
-ORIG_BREW_HOME="{{ orig_brew_home }}"
-ORIG_LEN=${#ORIG_BREW_HOME}
+# This is inserted at Homebrew/Linuxbrew build time.
+readonly orig_brew_home="{{ orig_brew_home }}"
+declare -i -r ORIG_LEN=${#orig_brew_home}
 
-BREW_HOME="$PWD"
-LEN=${#BREW_HOME}
+brew_home=$PWD
+LEN=${#brew_home}
 if [[ $LEN -gt $ORIG_LEN ]]; then
-  echo "Homebrew/Linuxbrew absolute path should be no more than $ORIG_LEN bytes, but actual " \
-       "length is $LEN bytes: $BREW_HOME" >&2
-  exit 1
+  fatal "Homebrew/Linuxbrew absolute path should be no more than $ORIG_LEN bytes, but actual " \
+        "length is $LEN bytes: $brew_home"
 fi
 
-BREW_LINK=$(get_fixed_length_path "$BREW_HOME" "$ORIG_LEN")
-LINK_LEN=${#BREW_LINK}
-if [[ $LINK_LEN != $ORIG_LEN ]]; then
-  echo "Homebrew/Linuxbrew should be linked to a directory having absolute path length of" \
-       "$ORIG_LEN bytes, but actual length is $LINK_LEN bytes: $BREW_LINK" >&2
-  exit 1
+get_fixed_length_path "$brew_home" "$ORIG_LEN"
+readonly brew_final_path=$fixed_length_path
+declare -i -r final_path_len=${#brew_final_path}
+if [[ $final_path_len != $ORIG_LEN ]]; then
+  fatal "Homebrew/Linuxbrew should be linked to a directory having absolute path length of" \
+        "$ORIG_LEN bytes, but actual length is $final_path_len bytes: $brew_final_path"
 fi
 
-ln -sfT "$BREW_HOME" "$BREW_LINK"
+if [[ $brew_home != $brew_final_path ]]; then
+  if [[ -e $brew_final_path ]]; then
+    fatal "Fixed-length path '$brew_final_path' already exists"
+  fi
+  # Make the real directory be the fixed-length path, and the old name would be a link to it.
+  cd /
+  mv "$brew_home" "$brew_final_path"
+  ln -sfT "$brew_final_path" "$brew_home"
+  cd "$brew_final_path"
+fi
 
-ORIG_BREW_HOME_ESCAPED=$(get_escaped_sed_re "$ORIG_BREW_HOME")
-BREW_LINK_ESCAPED=$(get_escaped_sed_replacement_str "$BREW_LINK")
+orig_brew_home_escaped=$(get_escaped_sed_re "$orig_brew_home")
+brew_final_path_escaped=$(get_escaped_sed_replacement_str "$brew_final_path")
 
 cat FILES_TO_PATCH | while read f
 do
-  sed -i --binary "s/$ORIG_BREW_HOME_ESCAPED/$BREW_LINK_ESCAPED/g" "$f"
+  sed -i --binary "s/$orig_brew_home_escaped/$brew_final_path_escaped/g" "$f"
 done
 
 cat LINKS_TO_PATCH | while read f
 do
-  target="$(readlink "$f")"
-  target="${target/$ORIG_BREW_HOME/$BREW_LINK}"
+  target=$(readlink "$f")
+  target="${target/$orig_brew_home/$brew_final_path}"
   ln -sfT "$target" "$f"
 done

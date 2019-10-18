@@ -32,21 +32,32 @@ if [[ $# -lt 1 ]]; then
   show_help_and_exit
 fi
 
-SRC_BREW_HOME=$(realpath $1)
+SRC_BREW_HOME=$(realpath "$1")
 if [[ ! -x $SRC_BREW_HOME/bin/brew ]]; then
-  echo >&2 "<source_brew_home_path> should point to a Homebrew/Linuxbrew directory."
-  show_help_and_exit
+  fatal "<source_brew_home_path> should point to a Homebrew/Linuxbrew directory."
 fi
 
-BREW_LINK=$(get_brew_link)
-BREW_HOME=$(get_fixed_length_path "$BREW_LINK")
+git_sha1_path="$SRC_BREW_HOME/GIT_SHA1"
+if [[ ! -f $git_sha1_path ]]; then
+  fatal "File '$git_sha1_path' not found"
+fi
+git_sha1=$( cat "$git_sha1_path" )
+get_brew_path_prefix
+BREW_LINK=$brew_path_prefix
+get_fixed_length_path "$BREW_LINK" "$ABS_PATH_LIMIT" "$git_sha1"
+BREW_HOME=$fixed_length_path
 
-echo "Copying to $BREW_HOME ..."
-mkdir -p "$BREW_HOME"
-# Recursively copy files tree, copy symlinks as symlinks, preserve hard links.
-rsync -rlH "$SRC_BREW_HOME/" "$BREW_HOME/"
+log "Existing Homebrew/Linuxbrew installation from $SRC_BREW_HOME to $BREW_HOME"
 
-echo "Patching files ..."
+(
+  set -x
+  mkdir -p "$BREW_HOME"
+
+  # Recursively copy files tree, copy symlinks as symlinks, preserve hard links.
+  time rsync -rlH "$SRC_BREW_HOME/" "$BREW_HOME/"
+)
+
+log "Patching files ..."
 SRC_BREW_HOME_ESCAPED=$(get_escaped_sed_re "$SRC_BREW_HOME")
 BREW_HOME_ESCAPED=$(get_escaped_sed_replacement_str "$BREW_HOME")
 
@@ -67,5 +78,5 @@ do
 done
 echo "Done"
 
-ln -s "$BREW_HOME" "$BREW_LINK"
+ln -sfT "$BREW_HOME" "$BREW_LINK"
 echo "Created link: $BREW_LINK -> $BREW_HOME"
