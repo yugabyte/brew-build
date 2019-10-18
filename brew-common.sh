@@ -28,15 +28,19 @@ declare -i -r ABS_PATH_LIMIT=85
 
 if [[ $OSTYPE == linux* ]]; then
   readonly YB_WHATBREW=linuxbrew
-else
+  readonly YB_WHATBREW_CAPITALIZED=Linuxbrew
+  readonly YB_OS_FAMILY=linux
+elif [[ $OSTYPE == darwin* ]]; then
   readonly YB_WHATBREW=homebrew
-fi
+  readonly YB_WHATBREW_CAPITALIZED=Homebrew
+  readonly YB_OS_FAMILY=macos
 
-# OS-dependent functions.
-if [[ $OSTYPE == darwin* ]]; then
   function sha256sum() {
     shasum -a 256 "$@"
   }
+else
+  echo >&2 "Unknown OS type: $OSTYPE"
+  exit 1
 fi
 
 # -------------------------------------------------------------------------------------------------

@@ -26,7 +26,7 @@ if [[ -d $brew_path_prefix ]]; then
   fatal "Directory $brew_path_prefix already exists, cannot clone the repo."
 fi
 
-git clone https://github.com/Homebrew/brew "$brew_path_prefix"
+git clone https://github.com/Homebrew/brew "$brew_path_prefix" --depth 1
 get_fixed_length_path "$brew_path_prefix"
 brew_home=$fixed_length_path
 if [[ -d $brew_home ]]; then

@@ -61,14 +61,14 @@ export PATH=/usr/local/bin:$PATH
 repo_dir=$PWD
 timestamp=$( date +%Y-%m-%dT%H_%M_%S )
 set_brew_timestamp
-tag=$YB_BREW_TIMESTAMP
+tag=$YB_BREW_TIMESTAMP-$YB_OS_FAMILY
 readonly brew_dir=/opt/yb-build/brew
 mkdir -p "$brew_dir"
 cd "$brew_dir"
 "$repo_dir/brew-clone-and-build-all.sh"
 
 has_files=false
-archive_prefix="$brew_dir/$YB_BREW_DIR_PREFIX-$YB_BREW_TIMESTAMP"
+archive_prefix="$brew_dir/$YB_WHATBREW-$YB_BREW_TIMESTAMP"
 log "Looking for .tar.gz files and SHA256 checksum files with prefix: '$archive_prefix'"
 msg_file=/tmp/release_message_${timestamp}_$RANDOM.tmp
 create_release_cmd=( release create "$tag" -F "$msg_file" )
@@ -84,9 +84,28 @@ for f in "$archive_prefix.tar.gz" \
   if [[ -f $f ]]; then
     log "File '$f' exists, will upload."
     create_release_cmd+=( -a "$f" )
-    brew_home=${f%.tar.gz}A
-    if ! "$added_versions" && [[ -d $brew_home/bin/brew ]]; then
-      $brew_home/bin/brew list --versions >>"$msg_file"
+    brew_home=${f%.tar.gz}
+    if ! "$added_versions" && [[ -x $brew_home/bin/brew ]]; then
+      (
+        cd "$brew_home"
+        echo "This pre-built binary package of $YB_WHATBREW_CAPITALIZED was built from commits:"
+        echo
+        for d in "" Library/Taps/*/*; do
+          (
+            cd "$d"
+            git_url=$( cat GIT_URL )
+            git_url_rel=${git_url#https://github.com/}
+            git_sha1=$( cat GIT_SHA1 )
+            git_sha1_short=${git_sha1:0:10}
+            echo "- [$git_url_rel/$git_sha1_short]($git_url/commits/$git_sha1)"
+          )
+        done
+
+        echo
+        echo "Included package versions:"
+        echo
+        $brew_home/bin/brew list --versions
+      ) >>"$msg_file"
       added_versions=true
     fi
     has_files=true
@@ -94,6 +113,9 @@ for f in "$archive_prefix.tar.gz" \
     log "File '$f' does not exist."
   fi
 done
+if ! "$added_versions"; then
+  fatal "Could not determine installed package versions"
+fi
 if ! "$has_files"; then
   fatal "No archive files found with prefix: '$archive_prefix'"
 fi

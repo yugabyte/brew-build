@@ -161,11 +161,10 @@ if [[ ${#BREW_FROM_SRC_PACKAGES[@]} -gt 0 ]]; then
 fi
 unset install_args
 
-echo "Successfully installed packages: ${successful_packages[*]}"
+log "Successfully installed packages: ${successful_packages[*]}"
 
 if [[ ${#failed_packages[@]} -gt 0 ]]; then
-  echo >&2 "Failed to install packages: ${failed_packages[*]}"
-  exit 1
+  fatal "Failed to install packages: ${failed_packages[*]}"
 fi
 
 if [[ ! -e VERSION_INFO ]]; then
@@ -178,7 +177,7 @@ if [[ ! -e VERSION_INFO ]]; then
   mv VERSION_INFO.tmp VERSION_INFO
 fi
 
-echo "Updating symlinks ..."
+log "Updating symlinks ..."
 find . -type l | while read f
 do
   target=$(readlink "$f")
@@ -195,7 +194,7 @@ do
   fi
 done
 
-echo "Preparing list of files to be patched during installation ..."
+log "Preparing list of files to be patched during installation ..."
 find ./Cellar -type f | while read f
 do
   if grep -q "$BREW_HOME" "$f"; then
@@ -210,7 +209,16 @@ do
   fi
 done | sort >LINKS_TO_PATCH
 
-git rev-parse HEAD >GIT_SHA1
+for repo_dir in "" Library/Taps/*/*; do
+  ( 
+    cd "$repo_dir"
+    log "Creating GIT_SHA1 and GIT_URL files in directory $PWD"
+    git rev-parse HEAD >GIT_SHA1
+    log "Git SHA1: $( cat GIT_SHA1 )"
+    git remote -v | egrep '^origin.*[(]fetch[)]$' | awk '{print $2}' >GIT_URL
+    log "Git URL: $( cat GIT_URL )"
+  )
+done
 
 BREW_HOME_ESCAPED=$(get_escaped_sed_replacement_str "$BREW_HOME")
 
@@ -228,4 +236,4 @@ tar zcf "$distr_path" . --transform s%^./%$distr_name_escaped/% --exclude ".git"
 pushd ..
 sha256sum "$archive_name" >$archive_name.sha256
 popd
-echo "Done"
+log "Done"
