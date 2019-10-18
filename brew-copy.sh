@@ -32,6 +32,10 @@ if [[ $# -lt 1 ]]; then
   show_help_and_exit
 fi
 
+if [[ -z "$1" ]]; then
+  fatal "Empty path specified"
+fi
+
 SRC_BREW_HOME=$(realpath "$1")
 if [[ ! -x $SRC_BREW_HOME/bin/brew ]]; then
   fatal "<source_brew_home_path> should point to a Homebrew/Linuxbrew directory."
@@ -46,8 +50,11 @@ get_brew_path_prefix
 BREW_LINK=$brew_path_prefix
 get_fixed_length_path "$BREW_LINK" "$ABS_PATH_LIMIT" "$git_sha1"
 BREW_HOME=$fixed_length_path
+if [[ -e $BREW_HOME ]]; then
+  fatal "Directory or file '$BREW_HOME' already exists"
+fi
 
-log "Existing Homebrew/Linuxbrew installation from $SRC_BREW_HOME to $BREW_HOME"
+log "Copying existing Homebrew/Linuxbrew installation from $SRC_BREW_HOME to $BREW_HOME"
 
 (
   set -x
@@ -61,9 +68,12 @@ log "Patching files ..."
 SRC_BREW_HOME_ESCAPED=$(get_escaped_sed_re "$SRC_BREW_HOME")
 BREW_HOME_ESCAPED=$(get_escaped_sed_replacement_str "$BREW_HOME")
 
+
 find "$BREW_HOME" -type f | while read f
 do
-  sed -i --binary "s/$SRC_BREW_HOME_ESCAPED/$BREW_HOME_ESCAPED/g" "$f"
+  # Regarding LC_ALL=C:
+  # https://stackoverflow.com/questions/19242275/re-error-illegal-byte-sequence-on-mac-os-x
+  LC_ALL=C sed -i --binary "s/$SRC_BREW_HOME_ESCAPED/$BREW_HOME_ESCAPED/g" "$f"
 done
 
 echo "Updating symlinks ..."
@@ -73,10 +83,10 @@ do
   if [[ $target == $SRC_BREW_HOME* ]]; then
     target="${target/$SRC_BREW_HOME/$BREW_HOME}"
     # -f to allow relinking. -T to avoid linking inside directory if $f already exists as directory.
-    ln -sfT "$target" "$f"
+    create_symlink "$target" "$f"
   fi
 done
 echo "Done"
 
-ln -sfT "$BREW_HOME" "$BREW_LINK"
+create_symlink "$BREW_HOME" "$BREW_LINK"
 echo "Created link: $BREW_LINK -> $BREW_HOME"

@@ -40,7 +40,7 @@ if [[ -d $brew_home ]]; then
   fi
 else
   mv "$brew_path_prefix" "$brew_home"
-  ln -sfT "${brew_home##*/}" "$brew_path_prefix"
+  create_symlink "${brew_home##*/}" "$brew_path_prefix"
 fi
 
 echo "$brew_home" >"$brew_home/ORIG_BREW_HOME"

@@ -27,12 +27,12 @@ fi
 declare -i -r ABS_PATH_LIMIT=85
 
 if [[ $OSTYPE == linux* ]]; then
-  readonly YB_WHATBREW=linuxbrew
-  readonly YB_WHATBREW_CAPITALIZED=Linuxbrew
+  readonly YB_BREW_TYPE_LOWERCASE=linuxbrew
+  readonly YB_BREW_TYPE_CAPITALIZED=Linuxbrew
   readonly YB_OS_FAMILY=linux
 elif [[ $OSTYPE == darwin* ]]; then
-  readonly YB_WHATBREW=homebrew
-  readonly YB_WHATBREW_CAPITALIZED=Homebrew
+  readonly YB_BREW_TYPE_LOWERCASE=homebrew
+  readonly YB_BREW_TYPE_CAPITALIZED=Homebrew
   readonly YB_OS_FAMILY=macos
 
   function sha256sum() {
@@ -62,6 +62,25 @@ heading() {
   echo >&2 "--------------------------------------------------------------------------------------"
 }
 
+create_symlink() {
+  if [[ $OSTYPE == linux* ]]; then
+    # -s - symbolic link
+    # -f - remove existing destination files
+    # -T (--no-target-directory) - treat LINK_NAME as a normal file always
+    ln -sfT "$@"
+  else
+    ln -sf "$@"
+  fi
+}
+
+run_tar() {
+  if [[ $OSTYPE == linux* ]]; then
+    tar "$@"
+  else
+    gtar "$@"
+  fi
+}
+
 set_brew_timestamp() {
   if [[ -z ${YB_BREW_TIMESTAMP:-} ]]; then
     export YB_BREW_TIMESTAMP=$(date +%Y%m%dT%H%M%S)
@@ -69,12 +88,11 @@ set_brew_timestamp() {
 }
 
 # Returns the prefix for a new Homebrew/Linuxbrew installation path, based on the current directory,
-# YB_WHATBREW ("homebrew" or "linuxbrew") and YB_BREW_TIMESTAMP (which would be set on demand).
+# YB_BREW_TYPE ("homebrew" or "linuxbrew") and YB_BREW_TIMESTAMP (which would be set on demand).
 # The return value is placed in the brew_path_prefix variable in the parent scope.
 get_brew_path_prefix() {
   set_brew_timestamp
-  local brew_dirname=""
-  brew_path_prefix="$(realpath .)/$YB_WHATBREW-$YB_BREW_TIMESTAMP"
+  brew_path_prefix="$(realpath .)/$YB_BREW_TYPE_LOWERCASE-$YB_BREW_TIMESTAMP"
   if [[ -n ${YB_BREW_SUFFIX:-} ]]; then
     brew_path_prefix+="-$YB_BREW_SUFFIX"
   fi

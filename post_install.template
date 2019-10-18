@@ -52,7 +52,7 @@ if [[ $brew_home != $brew_final_path ]]; then
   # Make the real directory be the fixed-length path, and the old name would be a link to it.
   cd /
   mv "$brew_home" "$brew_final_path"
-  ln -sfT "$brew_final_path" "$brew_home"
+  create_symlink "$brew_final_path" "$brew_home"
   cd "$brew_final_path"
 fi
 
@@ -68,5 +68,5 @@ cat LINKS_TO_PATCH | while read f
 do
   target=$(readlink "$f")
   target="${target/$orig_brew_home/$brew_final_path}"
-  ln -sfT "$target" "$f"
+  create_symlink "$target" "$f"
 done

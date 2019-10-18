@@ -39,6 +39,9 @@ cleanup() {
     log "Removing temporary directory: $work_dir"
     rm -rf "$work_dir"
   fi
+  if [[ $exit_code -ne 0 ]]; then
+    log "TEST FAILED, exit code: $exit_code"
+  fi
   exit "$exit_code"
 }
 
@@ -74,7 +77,17 @@ done
 
 delete_work_dir=true
 if [[ -z ${work_dir:-} ]]; then
-  work_dir=/tmp/brew_build_unit_test.$(date +%Y-%m-%dT%H_%M_%S).${RANDOM}
+  if [[ $OSTYPE == linux* ]]; then
+    tmp_dir=/tmp
+  else
+    # If we try to use /tmp on macOS, Homebrew says:
+    # "Your HOMEBREW_PREFIX is in the Homebrew temporary directory"
+    # (https://github.com/Homebrew/brew/blob/master/Library/Homebrew/brew.sh).
+    # So we use ~/tmp.
+    tmp_dir=$HOME/tmp
+    mkdir -p "$tmp_dir"
+  fi
+  work_dir=$tmp_dir/ybbrewtest-$$-$(date +%Y-%m-%dT%H_%M_%S)
   trap cleanup EXIT
 fi
 mkdir -p "$work_dir"
@@ -84,5 +97,12 @@ export YB_BREW_BUILD_UNIT_TEST_MODE=1
 "$script_dir/brew-clone-and-build-all.sh"
 
 heading "Testing brew-copy.sh"
-brew_home=$( find . -mindepth 1 -maxdepth 1 -type d -name "linuxbrew-*" | sort | head -1 )
+brew_home=$(
+  find . -mindepth 1 -maxdepth 1 -type d -name "$YB_BREW_TYPE_LOWERCASE-*" | sort | head -1
+)
+if [[ -z $brew_home ]]; then
+  fatal "Could not find a subdirectory starting with '$YB_BREW_TYPE_LOWERCASE-' in $PWD"
+fi
 "$script_dir/brew-copy.sh" "$brew_home"
+
+log "TEST SUCCEEDED"

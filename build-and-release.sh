@@ -68,9 +68,9 @@ cd "$brew_dir"
 "$repo_dir/brew-clone-and-build-all.sh"
 
 has_files=false
-archive_prefix="$brew_dir/$YB_WHATBREW-$YB_BREW_TIMESTAMP"
+archive_prefix="$brew_dir/$YB_BREW_TYPE_LOWERCASE-$YB_BREW_TIMESTAMP"
 log "Looking for .tar.gz files and SHA256 checksum files with prefix: '$archive_prefix'"
-msg_file=/tmp/release_message_${timestamp}_$RANDOM.tmp
+msg_file=/tmp/release_message_${timestamp}_${RANDOM}_$$.tmp
 create_release_cmd=( release create "$tag" -F "$msg_file" )
 added_versions=false
 (
@@ -88,7 +88,7 @@ for f in "$archive_prefix.tar.gz" \
     if ! "$added_versions" && [[ -x $brew_home/bin/brew ]]; then
       (
         cd "$brew_home"
-        echo "This pre-built binary package of $YB_WHATBREW_CAPITALIZED was built from commits:"
+        echo "This pre-built binary package of $YB_BREW_TYPE_CAPITALIZED was built from commits:"
         echo
         for d in "" Library/Taps/*/*; do
           (
@@ -126,4 +126,4 @@ if "$recreate_release"; then
   run_hub_cmd release delete "$tag"
   set -e
 fi
-run_hub_cmd "${create_release_cmd[@]}" 
+run_hub_cmd "${create_release_cmd[@]}"

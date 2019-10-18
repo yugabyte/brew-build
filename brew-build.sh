@@ -187,7 +187,7 @@ do
       # We want to convert relative links pointing outside of Homebrew/Linuxbrew to absolute links.
       # -f to allow relinking. -T to avoid linking inside directory if $f already exists as
       # directory.
-      ln -sfT "$real_target" "$f"
+      create_symlink "$real_target" "$f"
     fi
   else
     log "Link $f seems broken"
@@ -210,7 +210,7 @@ do
 done | sort >LINKS_TO_PATCH
 
 for repo_dir in "" Library/Taps/*/*; do
-  ( 
+  (
     cd "$repo_dir"
     log "Creating GIT_SHA1 and GIT_URL files in directory $PWD"
     git rev-parse HEAD >GIT_SHA1
@@ -232,7 +232,7 @@ archive_name=$distr_name.tar.gz
 distr_path=$(realpath "../$archive_name")
 echo "Preparing Homebrew/Linuxbrew distribution archive: $distr_path ..."
 distr_name_escaped=$(get_escaped_sed_replacement_str "$distr_name" "%")
-tar zcf "$distr_path" . --transform s%^./%$distr_name_escaped/% --exclude ".git"
+run_tar zcf "$distr_path" --exclude ".git" --transform s%^./%$distr_name_escaped/% .
 pushd ..
 sha256sum "$archive_name" >$archive_name.sha256
 popd
