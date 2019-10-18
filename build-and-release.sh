@@ -36,8 +36,8 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
-if [[ ${GITHUB_TOKEN:-} == "(yugabyte.githubToken)" ]]; then
-  log "GITHUB_TOKEN has its default value (yugabyte.githubToken), un-setting"
+if [[ ${GITHUB_TOKEN:-} == *yugabyte.githubToken* ]]; then
+  log "GITHUB_TOKEN contains the string yugabyte.githubToken, considering it unset."
   GITHUB_TOKEN=""
 fi
 export GITHUB_TOKEN
