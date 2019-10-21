@@ -21,16 +21,18 @@ set -euo pipefail
 
 . "${0%/*}/brew-common.sh"
 
-brew_path_prefix=$(get_brew_path_prefix)
+get_brew_path_prefix
 if [[ -d $brew_path_prefix ]]; then
   fatal "Directory $brew_path_prefix already exists, cannot clone the repo."
 fi
 
-set -x
-git clone https://github.com/Homebrew/brew "$brew_path_prefix"
-brew_home=$(get_fixed_length_path "$brew_path_prefix")
+git clone https://github.com/Homebrew/brew "$brew_path_prefix" --depth 1
+get_fixed_length_path "$brew_path_prefix"
+brew_home=$fixed_length_path
 if [[ -d $brew_home ]]; then
-  if [[ ${YB_BREW_REUSE_PREBUILT:-} == "1" ]]; then
+  if [[ $brew_prefix_path == $brew_home ]]; then
+    log "Directory path $brew_home is already of correct length."
+  elif [[ ${YB_BREW_REUSE_PREBUILT:-} == "1" ]]; then
     log "Directory $brew_home already exists, will reuse it."
     rm -rf "$brew_path_prefix"
   else
@@ -38,7 +40,11 @@ if [[ -d $brew_home ]]; then
   fi
 else
   mv "$brew_path_prefix" "$brew_home"
+  create_symlink "${brew_home##*/}" "$brew_path_prefix"
 fi
+
+echo "$brew_home" >"$brew_home/ORIG_BREW_HOME"
+( cd "$brew_home" && git rev-parse HEAD ) >"$brew_home/GIT_SHA1"
 
 echo "$brew_home" >latest_brew_clone_dir.txt
 echo "$brew_path_prefix" >latest_brew_path_prefix.txt

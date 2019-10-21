@@ -17,13 +17,19 @@ set -euo pipefail
 
 . "${0%/*}/brew-common.sh"
 
+readonly YB_BREW_BUILD_ROOT=$( cd "${BASH_SOURCE%/*}" && pwd )
+
 export HOMEBREW_CACHE=$PWD/brew_cache
 export HOMEBREW_LOGS=$PWD/brew_logs
 
 set_brew_timestamp
 
 time (
-  for YB_USE_SSE4 in 0 1; do
+  for YB_USE_SSE4 in 1 0; do
+    if [[ $YB_USE_SSE4 == "0" && ${YB_BREW_BUILD_SSE4_ONLY:-0} == "1" ]]; then
+      log "Skipping building the non-SSE4 configuration: YB_BREW_BUILD_SSE4_ONLY is set"
+      continue
+    fi
     export YB_USE_SSE4
     if [[ $YB_USE_SSE4 == "1" ]]; then
       export YB_BREW_SUFFIX=""
@@ -32,7 +38,6 @@ time (
     fi
     rm -f "latest_brew_clone_dir.txt"
     "$YB_BREW_BUILD_ROOT"/brew-clone.sh
-    set -x
     brew_home=$( cat "latest_brew_clone_dir.txt" )
     brew_path_prefix=$( cat "latest_brew_path_prefix.txt" )
     archive_path=$brew_path_prefix.tar.gz

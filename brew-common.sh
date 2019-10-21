@@ -20,7 +20,32 @@ if [[ $BASH_SOURCE == $0 ]]; then
   exit 1
 fi
 
+# -------------------------------------------------------------------------------------------------
+# Constants
+# -------------------------------------------------------------------------------------------------
+
 declare -i -r ABS_PATH_LIMIT=85
+
+if [[ $OSTYPE == linux* ]]; then
+  readonly YB_BREW_TYPE_LOWERCASE=linuxbrew
+  readonly YB_BREW_TYPE_CAPITALIZED=Linuxbrew
+  readonly YB_OS_FAMILY=linux
+elif [[ $OSTYPE == darwin* ]]; then
+  readonly YB_BREW_TYPE_LOWERCASE=homebrew
+  readonly YB_BREW_TYPE_CAPITALIZED=Homebrew
+  readonly YB_OS_FAMILY=macos
+
+  function sha256sum() {
+    shasum -a 256 "$@"
+  }
+else
+  echo >&2 "Unknown OS type: $OSTYPE"
+  exit 1
+fi
+
+# -------------------------------------------------------------------------------------------------
+# Functions
+# -------------------------------------------------------------------------------------------------
 
 log() {
   echo >&2 "[$( date +%Y-%m-%dT%H:%M:%S )] $*"
@@ -31,43 +56,79 @@ fatal() {
   exit 1
 }
 
+heading() {
+  echo >&2 "--------------------------------------------------------------------------------------"
+  echo >&2 "$*"
+  echo >&2 "--------------------------------------------------------------------------------------"
+}
+
+create_symlink() {
+  if [[ $OSTYPE == linux* ]]; then
+    # -s - symbolic link
+    # -f - remove existing destination files
+    # -T (--no-target-directory) - treat LINK_NAME as a normal file always
+    ln -sfT "$@"
+  else
+    ln -sf "$@"
+  fi
+}
+
+run_tar() {
+  if [[ $OSTYPE == linux* ]]; then
+    tar "$@"
+  else
+    gtar "$@"
+  fi
+}
+
 set_brew_timestamp() {
   if [[ -z ${YB_BREW_TIMESTAMP:-} ]]; then
     export YB_BREW_TIMESTAMP=$(date +%Y%m%dT%H%M%S)
   fi
 }
 
+# Returns the prefix for a new Homebrew/Linuxbrew installation path, based on the current directory,
+# YB_BREW_TYPE ("homebrew" or "linuxbrew") and YB_BREW_TIMESTAMP (which would be set on demand).
+# The return value is placed in the brew_path_prefix variable in the parent scope.
 get_brew_path_prefix() {
   set_brew_timestamp
-  local brew_dirname="$YB_BREW_DIR_PREFIX-$YB_BREW_TIMESTAMP"
-  local brew_path_prefix="$(realpath .)/$brew_dirname"
+  brew_path_prefix="$(realpath .)/$YB_BREW_TYPE_LOWERCASE-$YB_BREW_TIMESTAMP"
   if [[ -n ${YB_BREW_SUFFIX:-} ]]; then
     brew_path_prefix+="-$YB_BREW_SUFFIX"
   fi
   local len=${#brew_path_prefix}
   if [[ $len -gt $ABS_PATH_LIMIT ]]; then
-    echo "Homebrew/Linuxbrew absolute path should be no more than $ABS_PATH_LIMIT bytes, but " \
-         "actual length is $len bytes: $brew_path_prefix" >&2
-    exit 1
+    fatal "Homebrew/Linuxbrew absolute path should be no more than $ABS_PATH_LIMIT bytes, but " \
+          "actual length is $len bytes: $brew_path_prefix"
   fi
-  echo "$brew_path_prefix"
 }
-
-readonly YB_BREW_BUILD_ROOT=$( cd "${BASH_SOURCE%/*}" && pwd )
 
 # Extends the given path so that it has a fixed length.
 # Parameters:
 #   path - source path.
 #   len - required output path length. Optional parameter, if absent uses $ABS_PATH_LIMIT.
+#   git_sha1 - use this Git SHA1 for the filler part of the path.
+#
+# Return value: the variable fixed_length_path in the parent scope.
 get_fixed_length_path() {
-  local path="$1"
-  if [[ ! -d $path ]]; then
-    fatal "Directory '$path' does not exist"
+  local path=$1
+  local len=${2:-$ABS_PATH_LIMIT}
+  local sha1=${3:-}
+
+  # Use the Git SHA1 of the Homebrew repository as a filler.
+  if [[ -z $sha1 ]]; then
+    if [[ ! -d $path/.git ]]; then
+      fatal "Directory '$path' is not a Git repository, cannot get SHA1"
+    fi
+    sha1=$( cd "$path" && git rev-parse HEAD )
   fi
-  local len="${2:-$ABS_PATH_LIMIT}"
-  # Generate a path of a fixed length (up to a certain maximum length).
-  local sha1=$( cd "$path" && git rev-parse HEAD )
-  echo "$path-$(echo "$sha1-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" )" | cut -c-$len
+  if [[ ! $sha1 =~ ^[0-9a-f]{40}$ ]]; then
+    fatal "Invalid Git SHA1: '$sha1'"
+  fi
+
+  fixed_length_path=\
+"$path-${sha1}xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  fixed_length_path=${fixed_length_path:0:$len}
 }
 
 # Escape special characters in source string, so it can be used with sed as simple string pattern.
@@ -91,9 +152,3 @@ get_escaped_sed_replacement_str() {
   local delim=${2:-/}
   sed "s/[$delim&\]/\\\\&/g" <<<$1
 }
-
-if [[ $OSTYPE == linux* ]]; then
-  YB_BREW_DIR_PREFIX=linuxbrew
-else
-  YB_BREW_DIR_PREFIX=homebrew
-fi
