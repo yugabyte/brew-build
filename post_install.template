@@ -30,10 +30,11 @@ fi
 readonly orig_brew_home="{{ orig_brew_home }}"
 declare -i -r ORIG_LEN=${#orig_brew_home}
 
-brew_home=$PWD
+brew_home=$script_dir
+cd "$brew_home"
 LEN=${#brew_home}
 if [[ $LEN -gt $ORIG_LEN ]]; then
-  fatal "Homebrew/Linuxbrew absolute path should be no more than $ORIG_LEN bytes, but actual " \
+  fatal "Homebrew/Linuxbrew absolute path should be no more than $ORIG_LEN bytes, but actual" \
         "length is $LEN bytes: $brew_home"
 fi
 

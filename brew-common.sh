@@ -117,13 +117,17 @@ get_fixed_length_path() {
 
   # Use the Git SHA1 of the Homebrew repository as a filler.
   if [[ -z $sha1 ]]; then
-    if [[ ! -d $path/.git ]]; then
-      fatal "Directory '$path' is not a Git repository, cannot get SHA1"
+    if [[ -f $path/GIT_SHA1 ]]; then
+      sha1=$( cat $path/GIT_SHA1 )
+    else
+      if [[ ! -d $path/.git ]]; then
+        fatal "Directory '$path' is not a Git repository, cannot get SHA1"
+      fi
+      sha1=$( cd "$path" && git rev-parse HEAD )
     fi
-    sha1=$( cd "$path" && git rev-parse HEAD )
   fi
   if [[ ! $sha1 =~ ^[0-9a-f]{40}$ ]]; then
-    fatal "Invalid Git SHA1: '$sha1'"
+    fatal "Invalid Git SHA1: '$sha1', expected 40 hex characters"
   fi
 
   fixed_length_path=\
