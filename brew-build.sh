@@ -149,6 +149,9 @@ unset sse4_flags
 if [[ ${YB_BREW_BUILD_UNIT_TEST_MODE:-0} == "1" ]]; then
   BREW_FROM_SRC_PACKAGES=()
   BREW_BIN_PACKAGES=( patchelf )
+  if [[ $OSTYPE == darwin* ]]; then
+    BREW_BIN_PACKAGES+=( gnu-tar )
+  fi
 fi
 
 successful_packages=()
