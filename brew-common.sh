@@ -75,9 +75,15 @@ create_symlink() {
 
 run_tar() {
   if [[ $OSTYPE == linux* ]]; then
-    tar "$@"
+    ( set -x; tar "$@" )
   else
-    gtar "$@"
+    if which -s gtar; then
+      ( set -x; gtar "$@" )
+    elif [[ -n ${BREW_HOME:-} && -f $BREW_HOME/bin/gtar ]]; then
+      ( set -x; "$BREW_HOME/bin/gtar" "$@" )
+    else
+      fatal "Could not find gtar"
+    fi
   fi
 }
 

@@ -41,9 +41,9 @@ BREW_FROM_SRC_PACKAGES=(
 BREW_BIN_PACKAGES=()
 
 if [[ $OSTYPE == linux* ]]; then
-  BREW_BIN_PACKAGES+=( gcc@8 )
+  BREW_BIN_PACKAGES+=( gcc@8 libuuid )
 else
-  BREW_FROM_SRC_PACKAGES+=( libuuid )
+  BREW_FROM_SRC_PACKAGES+=( gnu-tar )
 fi
 
 # -------------------------------------------------------------------------------------------------
