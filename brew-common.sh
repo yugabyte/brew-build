@@ -87,6 +87,12 @@ set_brew_timestamp() {
   fi
 }
 
+if [[ $OSTYPE == darwin* ]] && ! which -s realpath; then
+  realpath() {
+    python -c "import sys, os; sys.stdout.write(os.path.realpath(sys.argv[1]))" "$@"
+  }
+fi
+
 # Returns the prefix for a new Homebrew/Linuxbrew installation path, based on the current directory,
 # YB_BREW_TYPE ("homebrew" or "linuxbrew") and YB_BREW_TIMESTAMP (which would be set on demand).
 # The return value is placed in the brew_path_prefix variable in the parent scope.
