@@ -32,16 +32,19 @@ BREW_FROM_SRC_PACKAGES=(
   gcc
   icu4c
   libtool
-  libuuid
   ninja
   openssl
   readline
   s3cmd
 )
 
-BREW_BIN_PACKAGES=(
-  gcc@8
-)
+BREW_BIN_PACKAGES=()
+
+if [[ $OSTYPE == linux* ]]; then
+  BREW_BIN_PACKAGES+=( gcc@8 )
+else
+  BREW_FROM_SRC_PACKAGES+=( libuuid )
+fi
 
 # -------------------------------------------------------------------------------------------------
 # Functions
