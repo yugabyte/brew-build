@@ -44,7 +44,7 @@ if [[ $OSTYPE == linux* ]]; then
   BREW_FROM_SRC_PACKAGES+=( gcc openssl s3cmd )
 else
   # OpenSSL fails to build from source on macOS and s3cmd depends on it.
-  BREW_BIN_PACKAGES+=( openssl s3cmd )
+  BREW_BIN_PACKAGES+=( openssl )
 
   BREW_FROM_SRC_PACKAGES+=( gnu-tar )
 fi
@@ -56,11 +56,11 @@ fi
 brew_install_packages() {
   local package
   for package in "$@"; do
-    echo
-    echo "----------------------------------------------------------------------------------------"
-    echo "Installing $package with arguments: $install_args"
-    echo "----------------------------------------------------------------------------------------"
-    echo
+    if [[ -n $install_args ]]; then
+      heading "Installing $package, arguments: $install_args"
+    else
+      heading "Installing $package"
+    fi
     if ( set -x; ./bin/brew install $install_args "$package" ); then
       log "Successfully installed package: $package"
       successful_packages+=( "$package" )
@@ -68,9 +68,7 @@ brew_install_packages() {
       log "Failed to install package: $package"
       failed_packages+=( "$package" )
     fi
-    echo
-    echo "----------------------------------------------------------------------------------------"
-    echo
+    separator_with_spacing
   done
 }
 
@@ -169,28 +167,23 @@ fi
 successful_packages=()
 failed_packages=()
 
-# Install binary packages first. This will also install some dependencies.
-# TODO: check if we actually need to build some of those dependencies from source.
-echo
-echo "============================================================================================"
-echo "Installing packages from binary downloads (bottles)."
-echo "============================================================================================"
-echo
-install_args=""
-if [[ ${#BREW_BIN_PACKAGES[@]} -gt 0 ]]; then
-  brew_install_packages "${BREW_BIN_PACKAGES[@]}"
+if [[ ${#BREW_FROM_SRC_PACKAGES[@]} -gt 0 ]]; then
+  thick_heading "Installing packages built from source."
+  install_args="--build-from-source"
+  brew_install_packages "${BREW_FROM_SRC_PACKAGES[@]}"
+else
+  thick_heading "No packages built from source to install."
 fi
 
-echo
-echo "============================================================================================"
-echo "Installing packages built from source."
-echo "============================================================================================"
-echo
-# Then install packages that are built from source.
-install_args="--build-from-source"
-if [[ ${#BREW_FROM_SRC_PACKAGES[@]} -gt 0 ]]; then
-  brew_install_packages "${BREW_FROM_SRC_PACKAGES[@]}"
+# Install binary packages.
+if [[ ${#BREW_BIN_PACKAGES[@]} -gt 0 ]]; then
+  thick_heading "Installing packages from binary downloads (bottles)."
+  install_args=""
+  brew_install_packages "${BREW_BIN_PACKAGES[@]}"
+else
+  thick_heading "No packages from binary downloads to install."
 fi
+
 unset install_args
 
 log "Successfully installed packages: ${successful_packages[*]}"
