@@ -26,7 +26,6 @@ jobs:
     steps:
       - script: |
           set -euxo pipefail
-          exit 1
           sudo mkdir -p /opt/yb-build
           sudo chown yugabyte-ci /opt/yb-build
           checkout_dir=$PWD
