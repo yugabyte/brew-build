@@ -33,16 +33,17 @@ BREW_FROM_SRC_PACKAGES=(
   libtool
   ninja
   readline
-  s3cmd
 )
 
 BREW_BIN_PACKAGES=()
 
 if [[ $OSTYPE == linux* ]]; then
   BREW_BIN_PACKAGES+=( gcc@8 libuuid )
-  BREW_FROM_SRC_PACKAGES+=( gcc openssl )
+  BREW_FROM_SRC_PACKAGES+=( gcc openssl s3cmd )
 else
-  BREW_BIN_PACKAGES+=( openssl )
+  # OpenSSL fails to build from source on macOS and s3cmd depends on it.
+  BREW_BIN_PACKAGES+=( openssl s3cmd )
+
   BREW_FROM_SRC_PACKAGES+=( gnu-tar )
 fi
 
@@ -157,13 +158,17 @@ fi
 successful_packages=()
 failed_packages=()
 
-install_args=""
-if [[ ${#BREW_BIN_PACKAGES[@]} -gt 0 ]]; then
-  brew_install_packages "${BREW_BIN_PACKAGES[@]}"
-fi
+# Install binary packages first. This will also install some dependencies.
+# TODO: check if we actually need to build some of those dependencies from source.
 install_args="--build-from-source"
 if [[ ${#BREW_FROM_SRC_PACKAGES[@]} -gt 0 ]]; then
   brew_install_packages "${BREW_FROM_SRC_PACKAGES[@]}"
+fi
+
+# Then install packages that are built from source.
+install_args=""
+if [[ ${#BREW_BIN_PACKAGES[@]} -gt 0 ]]; then
+  brew_install_packages "${BREW_BIN_PACKAGES[@]}"
 fi
 unset install_args
 
