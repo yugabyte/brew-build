@@ -29,7 +29,6 @@ BREW_FROM_SRC_PACKAGES=(
   automake
   bzip2
   flex
-  gcc
   icu4c
   libtool
   ninja
@@ -41,7 +40,7 @@ BREW_BIN_PACKAGES=()
 
 if [[ $OSTYPE == linux* ]]; then
   BREW_BIN_PACKAGES+=( gcc@8 libuuid )
-  BREW_FROM_SRC_PACKAGES+=( openssl )
+  BREW_FROM_SRC_PACKAGES+=( gcc openssl )
 else
   BREW_BIN_PACKAGES+=( openssl )
   BREW_FROM_SRC_PACKAGES+=( gnu-tar )
