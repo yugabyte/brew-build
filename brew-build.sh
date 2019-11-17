@@ -37,6 +37,8 @@ BREW_FROM_SRC_PACKAGES=(
 
 BREW_BIN_PACKAGES=()
 
+echo "OSTYPE: $OSTYPE"
+
 if [[ $OSTYPE == linux* ]]; then
   BREW_BIN_PACKAGES+=( gcc@8 libuuid )
   BREW_FROM_SRC_PACKAGES+=( gcc openssl s3cmd )
@@ -54,12 +56,21 @@ fi
 brew_install_packages() {
   local package
   for package in "$@"; do
+    echo
+    echo "----------------------------------------------------------------------------------------"
+    echo "Installing $package with arguments: $install_args"
+    echo "----------------------------------------------------------------------------------------"
+    echo
     if ( set -x; ./bin/brew install $install_args "$package" ); then
+      log "Successfully installed package: $package"
       successful_packages+=( "$package" )
     else
       log "Failed to install package: $package"
       failed_packages+=( "$package" )
     fi
+    echo
+    echo "----------------------------------------------------------------------------------------"
+    echo
   done
 }
 
@@ -160,15 +171,25 @@ failed_packages=()
 
 # Install binary packages first. This will also install some dependencies.
 # TODO: check if we actually need to build some of those dependencies from source.
-install_args="--build-from-source"
-if [[ ${#BREW_FROM_SRC_PACKAGES[@]} -gt 0 ]]; then
-  brew_install_packages "${BREW_FROM_SRC_PACKAGES[@]}"
-fi
-
-# Then install packages that are built from source.
+echo
+echo "============================================================================================"
+echo "Installing packages from binary downloads (bottles)."
+echo "============================================================================================"
+echo
 install_args=""
 if [[ ${#BREW_BIN_PACKAGES[@]} -gt 0 ]]; then
   brew_install_packages "${BREW_BIN_PACKAGES[@]}"
+fi
+
+echo
+echo "============================================================================================"
+echo "Installing packages built from source."
+echo "============================================================================================"
+echo
+# Then install packages that are built from source.
+install_args="--build-from-source"
+if [[ ${#BREW_FROM_SRC_PACKAGES[@]} -gt 0 ]]; then
+  brew_install_packages "${BREW_FROM_SRC_PACKAGES[@]}"
 fi
 unset install_args
 
