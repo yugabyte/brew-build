@@ -78,7 +78,7 @@ heading() {
   echo >&2
 }
 
-thick_heading() {
+big_heading() {
   echo >&2
   thick_separator
   echo >&2 "$*"

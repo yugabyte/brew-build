@@ -34,6 +34,7 @@ BREW_FROM_SRC_PACKAGES=(
   ninja
   readline
   openssl
+  libuuid
 )
 
 BREW_BIN_PACKAGES=()
@@ -41,7 +42,7 @@ BREW_BIN_PACKAGES=()
 echo "OSTYPE: $OSTYPE"
 
 if [[ $OSTYPE == linux* ]]; then
-  BREW_BIN_PACKAGES+=( gcc@8 libuuid )
+  BREW_BIN_PACKAGES+=( gcc@8 )
   BREW_FROM_SRC_PACKAGES+=( gcc )
 else
   BREW_FROM_SRC_PACKAGES+=( gnu-tar )
@@ -166,20 +167,20 @@ successful_packages=()
 failed_packages=()
 
 if [[ ${#BREW_FROM_SRC_PACKAGES[@]} -gt 0 ]]; then
-  thick_heading "Installing packages built from source."
+  big_heading "Installing packages built from source."
   install_args="--build-from-source"
   brew_install_packages "${BREW_FROM_SRC_PACKAGES[@]}"
 else
-  thick_heading "No packages built from source to install."
+  big_heading "No packages built from source to install."
 fi
 
 # Install binary packages.
 if [[ ${#BREW_BIN_PACKAGES[@]} -gt 0 ]]; then
-  thick_heading "Installing packages from binary downloads (bottles)."
+  big_heading "Installing packages from binary downloads (bottles)."
   install_args=""
   brew_install_packages "${BREW_BIN_PACKAGES[@]}"
 else
-  thick_heading "No packages from binary downloads to install."
+  big_heading "No packages from binary downloads to install."
 fi
 
 unset install_args
