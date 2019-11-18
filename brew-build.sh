@@ -33,6 +33,7 @@ BREW_FROM_SRC_PACKAGES=(
   libtool
   ninja
   readline
+  openssl
 )
 
 BREW_BIN_PACKAGES=()
@@ -41,11 +42,8 @@ echo "OSTYPE: $OSTYPE"
 
 if [[ $OSTYPE == linux* ]]; then
   BREW_BIN_PACKAGES+=( gcc@8 libuuid )
-  BREW_FROM_SRC_PACKAGES+=( gcc openssl s3cmd )
+  BREW_FROM_SRC_PACKAGES+=( gcc )
 else
-  # OpenSSL fails to build from source on macOS and s3cmd depends on it.
-  BREW_BIN_PACKAGES+=( openssl )
-
   BREW_FROM_SRC_PACKAGES+=( gnu-tar )
 fi
 
