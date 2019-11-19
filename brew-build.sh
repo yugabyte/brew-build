@@ -34,7 +34,6 @@ BREW_FROM_SRC_PACKAGES=(
   ninja
   readline
   openssl
-  libuuid
 )
 
 BREW_BIN_PACKAGES=()
@@ -43,7 +42,7 @@ echo "OSTYPE: $OSTYPE"
 
 if [[ $OSTYPE == linux* ]]; then
   BREW_BIN_PACKAGES+=( gcc@8 )
-  BREW_FROM_SRC_PACKAGES+=( gcc )
+  BREW_FROM_SRC_PACKAGES+=( gcc libuuid )
 else
   BREW_FROM_SRC_PACKAGES+=( gnu-tar )
 fi
