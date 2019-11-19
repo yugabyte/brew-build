@@ -29,19 +29,23 @@ BREW_FROM_SRC_PACKAGES=(
   automake
   bzip2
   flex
-  gcc
   icu4c
   libtool
-  libuuid
   ninja
-  openssl
   readline
-  s3cmd
+  openssl
 )
 
-BREW_BIN_PACKAGES=(
-  gcc@8
-)
+BREW_BIN_PACKAGES=()
+
+echo "OSTYPE: $OSTYPE"
+
+if [[ $OSTYPE == linux* ]]; then
+  BREW_BIN_PACKAGES+=( gcc@8 )
+  BREW_FROM_SRC_PACKAGES+=( gcc libuuid )
+else
+  BREW_FROM_SRC_PACKAGES+=( gnu-tar )
+fi
 
 # -------------------------------------------------------------------------------------------------
 # Functions
@@ -50,12 +54,19 @@ BREW_BIN_PACKAGES=(
 brew_install_packages() {
   local package
   for package in "$@"; do
+    if [[ -n $install_args ]]; then
+      heading "Installing $package, arguments: $install_args"
+    else
+      heading "Installing $package"
+    fi
     if ( set -x; ./bin/brew install $install_args "$package" ); then
+      log "Successfully installed package: $package"
       successful_packages+=( "$package" )
     else
       log "Failed to install package: $package"
       failed_packages+=( "$package" )
     fi
+    separator_with_spacing
   done
 }
 
@@ -146,19 +157,31 @@ unset sse4_flags
 if [[ ${YB_BREW_BUILD_UNIT_TEST_MODE:-0} == "1" ]]; then
   BREW_FROM_SRC_PACKAGES=()
   BREW_BIN_PACKAGES=( patchelf )
+  if [[ $OSTYPE == darwin* ]]; then
+    BREW_BIN_PACKAGES+=( gnu-tar )
+  fi
 fi
 
 successful_packages=()
 failed_packages=()
 
-install_args=""
-if [[ ${#BREW_BIN_PACKAGES[@]} -gt 0 ]]; then
-  brew_install_packages "${BREW_BIN_PACKAGES[@]}"
-fi
-install_args="--build-from-source"
 if [[ ${#BREW_FROM_SRC_PACKAGES[@]} -gt 0 ]]; then
+  big_heading "Installing packages built from source."
+  install_args="--build-from-source"
   brew_install_packages "${BREW_FROM_SRC_PACKAGES[@]}"
+else
+  big_heading "No packages built from source to install."
 fi
+
+# Install binary packages.
+if [[ ${#BREW_BIN_PACKAGES[@]} -gt 0 ]]; then
+  big_heading "Installing packages from binary downloads (bottles)."
+  install_args=""
+  brew_install_packages "${BREW_BIN_PACKAGES[@]}"
+else
+  big_heading "No packages from binary downloads to install."
+fi
+
 unset install_args
 
 log "Successfully installed packages: ${successful_packages[*]}"

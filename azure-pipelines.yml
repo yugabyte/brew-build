@@ -1,14 +1,14 @@
 resources:
   containers:
-  - container: centos7
-    image: yugabytedb/yb_build_infra_centos7:v2019-09-01T14_58_09_mbautin
+    - container: centos7
+      image: yugabytedb/yb_build_infra_centos7:v2019-09-01T14_58_09_mbautin
 
 # https://docs.microsoft.com/en-us/azure/devops/pipelines/build/triggers?view=azure-devops&tabs=yaml
 trigger:
   batch: true
   branches:
     include:
-    - master
+      - master
 
 jobs:
   - job: RunInContainer
@@ -25,11 +25,29 @@ jobs:
 
     steps:
       - script: |
+          set -euxo pipefail
           sudo mkdir -p /opt/yb-build
           sudo chown yugabyte-ci /opt/yb-build
           checkout_dir=$PWD
           chmod -R a+r "$checkout_dir"
           find "$checkout_dir" -executable -type f -exec chmod a+x {} \;
           sudo -u yugabyte-ci -E /bin/bash -c "cd '$checkout_dir' && ./test.sh && ./build-and-release.sh"
+        env:
+          GITHUB_TOKEN: $(yugabyte.githubToken)
+
+  - job: macOS
+    pool:
+      vmImage: 'macOS-10.14'
+
+    timeoutInMinutes: 0
+
+    steps:
+      - script: |
+          set -euxo pipefail
+          brew install hub
+          sudo mkdir -p /opt/yb-build
+          sudo chown $USER /opt/yb-build
+          ./test.sh
+          ./build-and-release.sh
         env:
           GITHUB_TOKEN: $(yugabyte.githubToken)

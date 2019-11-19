@@ -56,10 +56,34 @@ fatal() {
   exit 1
 }
 
+separator() {
+  echo >&2 "--------------------------------------------------------------------------------------"
+}
+
+thick_separator() {
+  echo >&2 "======================================================================================"
+}
+
+separator_with_spacing() {
+  echo >&2
+  separator
+  echo >&2
+}
+
 heading() {
-  echo >&2 "--------------------------------------------------------------------------------------"
+  echo >&2
+  separator
   echo >&2 "$*"
-  echo >&2 "--------------------------------------------------------------------------------------"
+  separator
+  echo >&2
+}
+
+big_heading() {
+  echo >&2
+  thick_separator
+  echo >&2 "$*"
+  thick_separator
+  echo >&2
 }
 
 create_symlink() {
@@ -75,9 +99,15 @@ create_symlink() {
 
 run_tar() {
   if [[ $OSTYPE == linux* ]]; then
-    tar "$@"
+    ( set -x; tar "$@" )
   else
-    gtar "$@"
+    if which -s gtar; then
+      ( set -x; gtar "$@" )
+    elif [[ -n ${BREW_HOME:-} && -f $BREW_HOME/bin/gtar ]]; then
+      ( set -x; "$BREW_HOME/bin/gtar" "$@" )
+    else
+      fatal "Could not find gtar"
+    fi
   fi
 }
 
@@ -86,6 +116,12 @@ set_brew_timestamp() {
     export YB_BREW_TIMESTAMP=$(date +%Y%m%dT%H%M%S)
   fi
 }
+
+if [[ $OSTYPE == darwin* ]] && ! which -s realpath; then
+  realpath() {
+    python -c "import sys, os; sys.stdout.write(os.path.realpath(sys.argv[1]))" "$@"
+  }
+fi
 
 # Returns the prefix for a new Homebrew/Linuxbrew installation path, based on the current directory,
 # YB_BREW_TYPE ("homebrew" or "linuxbrew") and YB_BREW_TIMESTAMP (which would be set on demand).
