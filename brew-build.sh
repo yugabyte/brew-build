@@ -24,7 +24,7 @@ readonly COMMON_SH="${0%/*}/brew-common.sh"
 
 readonly YB_USE_SSE4=${YB_USE_SSE4:-1}
 export HOMEBREW_NO_AUTO_UPDATE=1
-# pkg-config is installed first, because other packages might rely on it and we need to build it from 
+# pkg-config is installed first, because other packages might rely on it and we need to build it from
 # source in order to work in custom brew prefix directory.
 BREW_FROM_SRC_PACKAGES=(
   pkg-config
@@ -114,7 +114,9 @@ fi
 # Package installation
 # -------------------------------------------------------------------------------------------------
 
-if [[ ${YB_BREW_BUILD_UNIT_TEST_MODE:-0} == "1" ]]; then
+YB_BREW_BUILD_UNIT_TEST_MODE=${YB_BREW_BUILD_UNIT_TEST_MODE:-0}
+
+if [[ ${YB_BREW_BUILD_UNIT_TEST_MODE} == "1" ]]; then
   BREW_FROM_SRC_PACKAGES=()
   BREW_BIN_PACKAGES=( patchelf )
   if [[ $OSTYPE == darwin* ]]; then
@@ -150,8 +152,10 @@ if [[ ${#failed_packages[@]} -gt 0 ]]; then
   fatal "Failed to install packages: ${failed_packages[*]}"
 fi
 
-# Link explicitly to work around "openssl@1.1 is keg-only, which means it was not symlinked":
-./bin/brew link --force openssl
+if [[ ${YB_BREW_BUILD_UNIT_TEST_MODE} == "0" ]]; then
+  # Link explicitly to work around "openssl@1.1 is keg-only, which means it was not symlinked":
+  ./bin/brew link --force openssl
+fi
 
 if [[ ! -e VERSION_INFO ]]; then
   commit_id=$(git rev-parse HEAD)
