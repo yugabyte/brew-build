@@ -24,7 +24,10 @@ readonly COMMON_SH="${0%/*}/brew-common.sh"
 
 readonly YB_USE_SSE4=${YB_USE_SSE4:-1}
 export HOMEBREW_NO_AUTO_UPDATE=1
+# pkg-config is installed first, because other packages might rely on it and we need to build it from
+# source in order to work in custom brew prefix directory.
 BREW_FROM_SRC_PACKAGES=(
+  pkg-config
   autoconf
   automake
   bzip2
@@ -94,19 +97,9 @@ if [[ $LEN -ne $ABS_PATH_LIMIT ]]; then
         "$LEN bytes: $BREW_HOME"
 fi
 
-openssl_formula=./Library/Taps/homebrew/homebrew-core/Formula/openssl.rb
-openssl_orig=./Library/Taps/homebrew/homebrew-core/Formula/openssl.rb.orig
-
-if [[ ! -e "$openssl_orig" ]]; then
-  # Run brew info, so that brew downloads the openssl formula which we want to patch.
-  ./bin/brew info openssl >/dev/null
-  cp "$openssl_formula" "$openssl_orig"
-fi
-
 sse4_flags=""
 if [[ $YB_USE_SSE4 == "0" ]]; then
   echo "YB_USE_SSE4=$YB_USE_SSE4, disabling use of SSE4"
-  sse4_flags="-mno-sse4.1 -mno-sse4.2"
   export HOMEBREW_ARCH="core2"
 else
   echo "YB_USE_SSE4=$YB_USE_SSE4, enabling use of SSE4"
@@ -117,44 +110,13 @@ else
   export HOMEBREW_ARCH="core-avx-i"
 fi
 
-extra_flags="-mno-avx -mno-bmi -mno-bmi2 -mno-fma -no-abm -no-movbe"
-
-cp "$openssl_orig" "$openssl_formula"
-openssl_rb_extra_line="args += %w[-march=$HOMEBREW_ARCH $extra_flags $sse4_flags]"
-if [[ $OSTYPE == linux* ]]; then
-  cat <<EOF | patch "$openssl_formula"
-@@ -61,6 +61,7 @@ class Openssl < Formula
-       end
-       args << "enable-md2"
-     end
-+    $openssl_rb_extra_line
-     system "perl", "./Configure", *args
-     system "make", "depend"
-     system "make"
-EOF
-else
-  cat <<EOF | patch "$openssl_formula"
-diff --git a/Formula/openssl.rb b/Formula/openssl.rb
-index 5810436..83b213d 100644
---- a/Formula/openssl.rb
-+++ b/Formula/openssl.rb
-@@ -38,6 +38,7 @@ class Openssl < Formula
-       darwin64-x86_64-cc
-       enable-ec_nistp_64_gcc_128
-     ]
-+    $openssl_rb_extra_line
-     system "perl", "./Configure", *args
-     system "make", "depend"
-     system "make"
-EOF
-fi
-unset sse4_flags
-
 # -------------------------------------------------------------------------------------------------
 # Package installation
 # -------------------------------------------------------------------------------------------------
 
-if [[ ${YB_BREW_BUILD_UNIT_TEST_MODE:-0} == "1" ]]; then
+YB_BREW_BUILD_UNIT_TEST_MODE=${YB_BREW_BUILD_UNIT_TEST_MODE:-0}
+
+if [[ ${YB_BREW_BUILD_UNIT_TEST_MODE} == "1" ]]; then
   BREW_FROM_SRC_PACKAGES=()
   BREW_BIN_PACKAGES=( patchelf )
   if [[ $OSTYPE == darwin* ]]; then
@@ -188,6 +150,11 @@ log "Successfully installed packages: ${successful_packages[*]}"
 
 if [[ ${#failed_packages[@]} -gt 0 ]]; then
   fatal "Failed to install packages: ${failed_packages[*]}"
+fi
+
+if [[ ${YB_BREW_BUILD_UNIT_TEST_MODE} == "0" ]]; then
+  # Link explicitly to work around "openssl@1.1 is keg-only, which means it was not symlinked":
+  ./bin/brew link --force openssl
 fi
 
 if [[ ! -e VERSION_INFO ]]; then
