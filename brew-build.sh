@@ -151,11 +151,6 @@ if [[ ${#failed_packages[@]} -gt 0 ]]; then
   fatal "Failed to install packages: ${failed_packages[*]}"
 fi
 
-if [[ ${YB_BREW_BUILD_UNIT_TEST_MODE} == "0" ]]; then
-  # Link explicitly to work around "openssl@1.1 is keg-only, which means it was not symlinked":
-  ./bin/brew link --force openssl
-fi
-
 if [[ ! -e VERSION_INFO ]]; then
   commit_id=$(git rev-parse HEAD)
   echo "Homebrew/Linuxbrew commit ID: $commit_id" >VERSION_INFO.tmp
