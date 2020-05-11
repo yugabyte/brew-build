@@ -25,7 +25,7 @@ export HOMEBREW_LOGS=$PWD/brew_logs
 set_brew_timestamp
 
 time (
-  for YB_USE_SSE4 in 1 0; do
+  for YB_USE_SSE4 in 1; do
     if [[ $YB_USE_SSE4 == "0" && ${YB_BREW_BUILD_SSE4_ONLY:-0} == "1" ]]; then
       log "Skipping building the non-SSE4 configuration: YB_BREW_BUILD_SSE4_ONLY is set"
       continue

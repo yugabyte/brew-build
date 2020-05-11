@@ -34,9 +34,7 @@ BREW_FROM_SRC_PACKAGES=(
   flex
   icu4c
   libtool
-  ninja
   readline
-  openssl
 )
 
 BREW_BIN_PACKAGES=()
@@ -46,8 +44,10 @@ echo "OSTYPE: $OSTYPE"
 if [[ $OSTYPE == linux* ]]; then
   BREW_BIN_PACKAGES+=( gcc@8 )
   BREW_FROM_SRC_PACKAGES+=( gcc libuuid )
-else
+elif [[ $OSTYPE == darwin* ]]; then
   BREW_FROM_SRC_PACKAGES+=( gnu-tar )
+else
+  fatal "Unknown OS type: $OSTYPE"
 fi
 
 # -------------------------------------------------------------------------------------------------
@@ -116,8 +116,7 @@ fi
 
 YB_BREW_BUILD_UNIT_TEST_MODE=${YB_BREW_BUILD_UNIT_TEST_MODE:-0}
 
-if [[ ${YB_BREW_BUILD_UNIT_TEST_MODE} == "1" ]]; then
-  BREW_FROM_SRC_PACKAGES=()
+if [[ $YB_BREW_BUILD_UNIT_TEST_MODE == "1" ]]; then
   BREW_BIN_PACKAGES=( patchelf )
   if [[ $OSTYPE == darwin* ]]; then
     BREW_BIN_PACKAGES+=( gnu-tar )
