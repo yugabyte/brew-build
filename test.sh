@@ -110,26 +110,28 @@ cd "$work_dir"
 export YB_BREW_BUILD_UNIT_TEST_MODE=1
 "$script_dir/brew-clone-and-build-all.sh"
 
-find_latest_brew_dir
-brew_home=$latest_brew_dir
-log "Will use the directory $brew_home for further testing"
+if [[ $OSTYPE == linux* ]]; then
+  find_latest_brew_dir
+  brew_home=$latest_brew_dir
+  log "Will use the directory $brew_home for further testing"
 
-heading "Testing post_install.sh"
+  heading "Testing post_install.sh"
 
-( set -x; cd /; rm -rf "$brew_home/.git"; "$brew_home/post_install.sh" )
+  ( set -x; cd /; rm -rf "$brew_home/.git"; "$brew_home/post_install.sh" )
 
-heading "Testing brew-copy.sh"
+  heading "Testing brew-copy.sh"
 
-if [[ -z $brew_home ]]; then
-  fatal "Could not find a subdirectory starting with '$YB_BREW_TYPE_LOWERCASE-' in $PWD"
+  if [[ -z $brew_home ]]; then
+    fatal "Could not find a subdirectory starting with '$YB_BREW_TYPE_LOWERCASE-' in $PWD"
+  fi
+  "$script_dir/brew-copy.sh" "$brew_home"
+
+  heading "Testing post_install.sh after brew-copy.sh"
+  find_latest_brew_dir
+  if [[ $latest_brew_dir == $brew_home ]]; then
+    fatal "brew-copy.sh failed to produce a new Homebrew/Linuxbrew directory in $PWD"
+  fi
+  ( set -x; "$latest_brew_dir/post_install.sh" )
+
+  log "TEST SUCCEEDED"
 fi
-"$script_dir/brew-copy.sh" "$brew_home"
-
-heading "Testing post_install.sh after brew-copy.sh"
-find_latest_brew_dir
-if [[ $latest_brew_dir == $brew_home ]]; then
-  fatal "brew-copy.sh failed to produce a new Homebrew/Linuxbrew directory in $PWD"
-fi
-( set -x; "$latest_brew_dir/post_install.sh" )
-
-log "TEST SUCCEEDED"
