@@ -1,7 +1,7 @@
 # brew-build
 
 This set of wrappers scripts allows to build a customized version of Homebrew/Linuxbrew used by the
-YugaByte DB build process. We pre-install the Homebrew/Linuxbrew packages that we need, built with
+YugabyteDB build process. We pre-install the Homebrew/Linuxbrew packages that we need, built with
 the appropriate compiler flags. We ensure that the full path to the root directory of the
 Homebrew/Linuxbrew installation is long enough so that we can replace it in place with a different
 path by patching binaries on the destination machine. This patching is done as part of the
